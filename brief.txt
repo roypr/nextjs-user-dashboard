@@ -1,0 +1,45 @@
+This is a very straight forward project - A basic lightweight user management system with basic CMS.
+
+Core DB Tables: 
+    - Users
+    - User Groups
+    - Pages
+    - Settings 
+
+Features
+    - Frontend and Admin panel with separate login & logout pages
+    - Frontend
+        - Home page: Admin can select one from pages created.
+        - Common header, footer layout for all frontend pages
+        - User singup, login, logout, forgot password, change password, change email, edit profile, delete profile, dashboard pages. 
+        - User profile will have Name, email, phone, address.
+        - To keep signup easy, just email and password.
+        - Email verification required for signup and email change.
+        - An empty dashboard page to land after login.
+        - Few frontend routes will be logged in only(any user type). Others public. Best implemented with route check like "account/*" will be restricted.
+    - Admin panel access
+        - Only Super admin and admin users can login
+        - Route based access control. 
+        - Admin can create user groups and assign them types admin or regular.
+        - Even within admin types not everyone will have access to all routes. 
+    - Admin panel functions
+        - Mostly CRUD operations.
+        - View users list, search by name, email, phone. Edit, delete, create.
+        - View Pages, search by title. create, edit, delete.
+        - Pages will have Title and content fields, no HTML editor required just big text box. But should support HTML for content. Title is plain text
+        - An empty dashboard page to land after login for admin.
+        - Settings: 
+            - Set header menu with conditional check. Different for logged in and out users.
+            - Footer content (HTML)
+            - Select Home page
+            
+    - Super Admin - Single account defined in .env 
+        - Only user who can create user groups and assign route based permission.
+    
+Other Decisions
+    - Next js with react compiler, tailwind css
+    - Typescript
+    - DB access via URL set in env not bundled with project, PostGres preferred.
+    - Use prisma if necessary
+    - Mostly boiler plate code, follow industry standard for secutiry. 
+    - Follow best SEO practice for public content. 
