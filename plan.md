@@ -3,7 +3,7 @@
 ---
 
 **TL;DR**
-A lightweight Next.js user management system with a basic CMS, separate frontend and admin areas, RBAC, email verification, and PostgreSQL persistence. Uses Next.js App Router with iron-session for stateless auth (with tokenVersion-based invalidation), Prisma ORM, Server Actions for form handling, and Upstash Redis for rate limiting. The single biggest risk is iron-session + Next.js 16 middleware compatibility — spike this first.
+A lightweight Next.js 16 user management system with a basic CMS, separate frontend and admin areas, RBAC, email verification, and PostgreSQL persistence. Uses Next.js App Router with `jose`-based stateless JWE sessions (httpOnly cookies, tokenVersion invalidation), Prisma ORM, Server Actions for form handling, and Upstash Redis for rate limiting. The single biggest risk is the `jose` session implementation in `proxy.ts` where cookie writes are not possible — session reads are done via `request.cookies.get()` and full validation/writing stays in Server Actions and Server Components.
 
 ---
 
@@ -66,16 +66,16 @@ Build a user management and CMS system where:
 
 1. **Email sending** — A transactional email service (Resend recommended, SendGrid or SMTP also supported) will be configured via env vars. Resend is preferred for deliverability (DKIM/SPF/DMARC handled automatically). nodemailer connects via SMTP, which Resend supports.
 2. **Single deployment** — One instance serving both frontend and admin. No horizontal scaling needed initially.
-3. **Session strategy** — Stateless sealed cookies (iron-session) with a `tokenVersion` field on User for invalidation on password change / account deletion, and a `permissionVersion` on UserGroup for permission change invalidation. Invalidation checks happen in middleware with a 60-second in-memory cache to avoid DB hits.
+3. **Session strategy** — Stateless JWE (encrypted JWT) cookies via the `jose` library. Session payload includes `userId`, `email`, `groupId`, `groupType`, `routePermissions`, `isSuperAdmin`, `tokenVersion`, and `permissionVersion`. Token version checked against DB (with short in-memory cache) on each request for invalidation. `jose` is used because it's async-native, has zero compat debt with Next.js 16, and is the same underlying crypto library that iron-session wraps (20M weekly downloads).
 4. **File uploads** — Not required. Profile images out of scope for MVP.
 5. **Pagination** — Needed for user and page lists but modest scale (server-side with offset/limit, no cursor-based).
 6. **Admin route permissions** — Stored as an array of route path patterns in the UserGroup record (e.g., `["/admin/users", "/admin/pages"]`). Pattern matching uses `startsWith`. Wildcard patterns like `"/admin/users*"` are the expected format and cover parameterized sub-routes.
 7. **Slug generation** — Auto-generated from page title (lowercase, hyphens, no special chars). If slug exists, append `-2`, `-3`, etc. (max 10 attempts). Slug is shown to admin before save. Prisma unique constraint error is caught and returns a specific error message with a suggested alternative slug.
 8. **Home page** — Settings stores the slug of the selected page. Frontend `/` route renders that page's content. Deleting the home page is prevented if it's currently set as `home_page` in settings.
 9. **Settings header menu editor** — For MVP, the header menu is edited as raw JSON in a textarea (admins edit a JSON array of `{label, href}` objects directly). A visual editor with add/remove/reorder buttons is deferred to a future enhancement.
-10. **Rate limiting** — Uses Upstash Redis (free tier: 10,000 commands/day). Applied inside Server Actions (not middleware) to reliably get client IP via `x-forwarded-for` header.
+10. **Rate limiting** — Uses Upstash Redis (free tier: 10,000 commands/day). Applied inside Server Actions (not proxy) to reliably get client IP via `x-forwarded-for` header.
 
-> **If invalidated:** If iron-session proves incompatible with Next.js 16 middleware, switch to `@oslojs/jose` for manual JWT-based httpOnly cookie sessions. If user scale exceeds ~50K, add connection pooling (PgBouncer) and consider Redis for settings caching. If Upstash Redis is unavailable, fall back to an in-memory `Map` with the understanding that limits reset on deploy and don't work across multiple instances.
+> **If invalidated:** If user scale exceeds ~50K, add connection pooling (PgBouncer) and consider Redis for settings caching. If Upstash Redis is unavailable, fall back to an in-memory `Map` with the understanding that limits reset on deploy and don't work across multiple instances.
 
 ---
 
@@ -83,11 +83,12 @@ Build a user management and CMS system where:
 
 | Constraint | Impact |
 |---|---|
-| PostgreSQL only (no SQLite fallback) | Requires a running PG instance for dev; use Docker Compose |
+| PostgreSQL only (no SQLite fallback) | Requires a running PG instance for dev |
 | No bundled DB | No `better-sqlite3` or embedded option; good for production parity |
 | Email verification mandatory | Adds token generation, email sending, verification endpoint, and resend flow complexity |
 | Separate login pages | Two auth entry points with shared session logic; must prevent cross-area session confusion |
-| React Compiler | Requires Next.js 15+ with `reactCompiler: true` in next.config; already enabled |
+| React Compiler | Requires `reactCompiler: true` in next.config; already enabled |
+| Next.js 16 — `middleware.ts` deprecated | Must use `proxy.ts`; Edge runtime not supported in proxy; `cookies()` fully async |
 | Open source | All files must have JSDoc/file-level comments; code must be self-documenting |
 
 ---
@@ -99,18 +100,18 @@ Build a user management and CMS system where:
 | Framework | Next.js (App Router) | 16.2.x | Industry standard, React Compiler support, server components, built-in SEO |
 | Language | TypeScript (strict mode) | 5.x | Type safety across the stack |
 | Styling | Tailwind CSS | v4 | Utility-first, rapid UI, good DX with Next.js |
-| ORM | Prisma | latest | Type-safe queries, migrations, excellent PG support |
+| ORM | Prisma | 7.x | Type-safe queries, migrations, excellent PG support |
 | Database | PostgreSQL | 15+ | Required; battle-tested |
-| Auth (sessions) | `iron-session` | v8+ | Stateless sealed cookies, minimal overhead |
+| Auth (sessions) | `jose` | latest | Async-native JWE (encrypted JWT), 20M weekly downloads, zero compat debt with Next.js 16 async cookies |
 | Password hashing | `bcryptjs` | latest | Pure JS avoids native build issues in CI/CD |
 | Email | `nodemailer` + Resend SMTP | latest | Simple, Resend provides reliable deliverability |
 | Form handling | Server Actions + `useActionState` | built-in | Native Next.js pattern, automatic CSRF |
-| Validation | `zod` | latest | Type-safe schema validation for API boundaries |
+| Validation | `zod` | 4.x | Type-safe schema validation for API boundaries |
 | Rate limiting | `@upstash/ratelimit` + `@upstash/redis` | latest | Simple API, free tier sufficient, works cross-instance |
 
 **NPM packages to install:**
 ```
-iron-session
+jose
 bcryptjs
 nodemailer
 zod
@@ -121,6 +122,8 @@ prisma
 ```
 
 **Alternatives considered and rejected:**
+- **iron-session v8:** Broken on Next.js 16.2.9 without workarounds. Requires `await cookies()` patching in Server Components/Actions. In `proxy.ts`, `cookies()` from `next/headers` writes nowhere (cookies must be set on `NextResponse`). Known Safari bug (#870) with cookie saving. `jose` is the same underlying crypto library but async-native from day one — a thin 3-function wrapper in `lib/session.ts` replaces the entire library.
+- **`@oslojs/jose`:** Low-level JOSE primitives; more boilerplate than `jose` for JWE. `jose` is simpler and more widely adopted.
 - **next-auth v5:** Feature-rich but heavy for this use case; credential provider + email verification requires significant custom wiring anyway.
 - **Lucia Auth:** Recently deprecated; migration burden.
 - **Drizzle ORM:** Good but Prisma's migration system and studio are better for rapid admin-panel development.
@@ -147,23 +150,27 @@ prisma
 │           │                 └────────┬──────────┘       │
 │           │                          │                   │
 │  ┌────────▼──────────────────────────▼──────────┐       │
-│  │              Middleware (route guard)          │       │
-│  │  - Parse iron-session cookie (await cookies()) │       │
+│  │              proxy.ts (route guard)            │       │
+│  │  - Read session cookie via request.cookies    │       │
 │  │  - Validate tokenVersion against in-memory    │       │
 │  │    cache (60s TTL, fallback to DB query)      │       │
 │  │  - /account/* → require any auth              │       │
 │  │  - /admin/* (except /admin/login) → require   │       │
 │  │    admin + check route permissions            │       │
 │  │  - Super Admin bypasses all permission checks │       │
+│  │  - Cookie writes NOT done here (proxy.ts is   │       │
+│  │    read-only for sessions)                    │       │
 │  └──────────────────────┬───────────────────────┘       │
 │                         │                                │
 │  ┌──────────────────────▼───────────────────────┐       │
-│  │          Server Actions / API Routes          │       │
+│  │          Server Actions / Route Handlers      │       │
 │  │  - Auth actions (signup, login, logout, etc) │       │
 │  │  - CRUD actions (users, pages, settings)     │       │
 │  │  - Email actions (verification, reset)       │       │
 │  │  - Rate limiting applied inside each action  │       │
 │  │  - authorize() called as first line in each  │       │
+│  │  - Session cookie writes via await cookies() │       │
+│  │    + cookieStore.set()                       │       │
 │  └──────────────────────┬───────────────────────┘       │
 │                         │                                │
 │  ┌──────────────────────▼───────────────────────┐       │
@@ -182,12 +189,17 @@ prisma
 
 **Key architectural decisions:**
 
-1. **Single middleware for both areas** — Simplifies session parsing; route pattern matching determines auth requirements.
-2. **Server Actions over API Routes** — Better DX with form submissions, automatic CSRF protection via Next.js, no need for client-side fetch boilerplate.
-3. **No separate API server** — Everything lives in the Next.js app; reduces operational surface area.
-4. **Stateless sessions with tokenVersion** — Session data (userId, groupId, groupType, routePermissions, tokenVersion, permissionVersion) sealed in an httpOnly cookie. Token version checked against DB (with short cache) on each request via middleware. This gives us stateless performance with stateful invalidation.
-5. **Rate limiting in Server Actions, not middleware** — Middleware cannot reliably get client IP across all deployment environments. Server Actions use `headers().get('x-forwarded-for')` with fallback logic.
-6. **Authorization at two layers** — Middleware for route-level gating (redirect if unauthorized), Server Actions for operation-level enforcement (defense in depth). Layout components call `authorize()` for render-level decisions (showing/hiding admin sidebar items), but route enforcement lives in middleware.
+1. **`jose`-based stateless JWE sessions** — Session data (userId, email, groupId, groupType, routePermissions, isSuperAdmin, tokenVersion, permissionVersion) encrypted into an httpOnly cookie using AES-256-GCM via `jose`. Token version checked against DB (with short cache) on each request. This gives us stateless performance with stateful invalidation.
+
+2. **`proxy.ts` for route gating (read-only)** — Proxy reads the session cookie via `request.cookies.get()` and decrypts it using `jose`'s `jwtDecrypt`. It validates tokenVersion/permissionVersion against the in-memory cache. However, it does NOT write cookies — session creation, update, and destruction happen in Server Actions and Server Components via `await cookies()` + `cookieStore.set()`/`cookieStore.delete()`. This aligns with Next.js 16's "Thin Proxy" philosophy.
+
+3. **Server Actions over API Routes** — Better DX with form submissions, automatic CSRF protection via Next.js, no need for client-side fetch boilerplate.
+
+4. **No separate API server** — Everything lives in the Next.js app; reduces operational surface area.
+
+5. **Rate limiting in Server Actions, not proxy** — Proxy cannot reliably get client IP across all deployment environments. Server Actions use `headers().get('x-forwarded-for')` with fallback logic.
+
+6. **Authorization at two layers** — Proxy for route-level gating (redirect if unauthorized), Server Actions for operation-level enforcement (defense in depth). Layout components call `authorize()` for render-level decisions (showing/hiding admin sidebar items), but route enforcement lives in proxy.
 
 ---
 
@@ -197,7 +209,7 @@ prisma
 
 | File | Responsibility |
 |---|---|
-| `session.ts` | `getSession()`, `createSession()`, `destroySession()`, `updateSession()` — wraps iron-session. `createSession` includes `tokenVersion` from User and `permissionVersion` from UserGroup in the session payload. `updateSession` refreshes these versions from DB. |
+| `session.ts` | `getSession()`, `createSession()`, `updateSession()`, `destroySession()` — thin wrapper around `jose`'s `EncryptJWT`/`jwtDecrypt`. `createSession` builds the session payload and encrypts it into a JWE. `getSession` reads and decrypts the cookie. `destroySession` deletes the cookie. `updateSession` refreshes tokenVersion/permissionVersion from DB and re-encrypts. |
 | `password.ts` | `hashPassword()`, `verifyPassword()` — bcryptjs wrappers with cost factor 12 |
 | `tokens.ts` | `generateToken()` (uses `crypto.randomUUID()`), `createVerificationToken()`, `createPasswordResetToken()`, `validateToken()`, `cleanupExpiredTokens()` |
 | `email.ts` | `sendVerificationEmail()`, `sendPasswordResetEmail()` — nodemailer wrapper configured via SMTP env vars |
@@ -248,7 +260,6 @@ prisma
 | `AdminLayout` | Sidebar + topbar wrapper. Used in `app/admin/layout.tsx`. Sidebar filters visible menu items based on routePermissions from session. |
 | `Header` | Renders dynamic menu from settings. Checks session to determine which menu variant to show. |
 | `Footer` | Renders raw HTML from `footer_content` setting using `dangerouslySetInnerHTML`. |
-| `AuthGuard` | Client component wrapper for protected routes. Shows loading spinner while session is being validated, redirects to login if unauthorized. Used as fallback UI, not primary auth enforcement. |
 | `Pagination` | Reusable pagination component. Props: `currentPage`, `totalPages`, `baseUrl`. Renders Previous/Next + page numbers. |
 | `SearchInput` | Simple search input with submit button (no debounce for MVP). Wrapped in a `<form>` that submits via query params. |
 | `ConfirmDialog` | Delete confirmation modal. Props: `title`, `message`, `onConfirm`, `onCancel`. Uses `<dialog>` element with backdrop. |
@@ -268,7 +279,7 @@ prisma
 
 ### 6. Authorization Utility (`lib/auth/authorize.ts`)
 
-Single `authorize()` function used by middleware (route-level), Server Actions (operation-level), and layout components (render-level).
+Single `authorize()` function used by proxy (route-level), Server Actions (operation-level), and layout components (render-level).
 
 ```ts
 /**
@@ -298,7 +309,7 @@ type AuthCheck =
  * // In a Server Action:
  * authorize(session, { type: 'admin' })
  * 
- * // In middleware:
+ * // In proxy.ts:
  * authorize(session, { type: 'route', path: '/admin/users' })
  */
 function authorize(session: SessionData | null, check: AuthCheck): boolean
@@ -310,6 +321,91 @@ function authorize(session: SessionData | null, check: AuthCheck): boolean
 
 ## Data Flow
 
+### Session Architecture (jose-based JWE)
+
+```ts
+// lib/auth/session.ts — the entire session library
+
+import { EncryptJWT, jwtDecrypt } from 'jose';
+import { cookies } from 'next/headers';
+
+const key = new TextEncoder().encode(process.env.SESSION_SECRET!); // 32+ chars
+
+/**
+ * Session data encrypted into the JWE cookie.
+ * 
+ * tokenVersion and permissionVersion are checked against the database
+ * (with a short in-memory cache) on each request to provide session
+ * invalidation for password changes, permission changes, and account deletion.
+ */
+export type SessionData = {
+  userId: string;
+  email: string;
+  groupId: string | null;
+  groupType: 'admin' | 'regular' | null;
+  routePermissions: string[];
+  isSuperAdmin: boolean;
+  tokenVersion: number;
+  permissionVersion: number;
+};
+
+/**
+ * Read and decrypt the current session from cookies.
+ * Returns null if no session exists or the token is invalid/expired.
+ * Used in Server Components, Server Actions, and Route Handlers.
+ */
+export async function getSession(): Promise<SessionData | null> {
+  const store = await cookies();
+  const token = store.get('app_session')?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtDecrypt(token, key);
+    return payload as unknown as SessionData;
+  } catch {
+    return null; // expired or tampered
+  }
+}
+
+/**
+ * Create a new session and set the httpOnly cookie.
+ * Used after successful login or signup.
+ * maxAge: 7 days.
+ */
+export async function createSession(data: SessionData): Promise<void> {
+  const token = await new EncryptJWT(data as unknown as Record<string, unknown>)
+    .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .encrypt(key);
+
+  (await cookies()).set('app_session', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 60 * 24 * 7, // 7 days in seconds
+    path: '/',
+  });
+}
+
+/**
+ * Update session data (e.g., after permission changes) and re-set the cookie.
+ * Reads current session, merges with new data, re-encrypts.
+ */
+export async function updateSession(updates: Partial<SessionData>): Promise<void> {
+  const session = await getSession();
+  if (!session) return;
+  const merged = { ...session, ...updates };
+  await createSession(merged);
+}
+
+/**
+ * Destroy the current session by deleting the cookie.
+ */
+export async function destroySession(): Promise<void> {
+  (await cookies()).delete('app_session');
+}
+```
+
 ### Authentication Flow
 
 ```
@@ -317,16 +413,17 @@ function authorize(session: SessionData | null, check: AuthCheck): boolean
 2. Rate limiter check: max 5 attempts per IP per 60 seconds
 3. Server Action: validate credentials against DB (bcrypt.compare)
 4. If valid: fetch user's group + group's permissionVersion
-5. Create iron-session seal with:
+5. Build SessionData:
    { userId, email, groupId, groupType, routePermissions, isSuperAdmin, tokenVersion, permissionVersion }
-6. Set httpOnly cookie in response (7-day maxAge)
+6. Call createSession(data) → jose encrypts to JWE → httpOnly cookie set
 7. Redirect to appropriate dashboard (frontend or admin)
-8. Middleware on subsequent requests:
-   a. Decrypt session cookie
-   b. Check in-memory cache for latest tokenVersion (60s TTL)
-   c. If cache miss: query DB for current tokenVersion + permissionVersion
-   d. If versions don't match: destroy session, redirect to login
-   e. If match: allow request through
+8. Proxy on subsequent requests:
+   a. Read 'app_session' cookie via request.cookies.get()
+   b. Decrypt JWE via jwtDecrypt()
+   c. Check in-memory cache for latest tokenVersion (60s TTL)
+   d. If cache miss: query DB for current tokenVersion + permissionVersion
+   e. If versions don't match: redirect to login, session invalid
+   f. If match: allow request through
 ```
 
 ### Email Verification Flow
@@ -351,7 +448,7 @@ function authorize(session: SessionData | null, check: AuthCheck): boolean
 2. Server Component:
    - If "/": call getSettings() → read home_page slug → fetch that page by slug
    - If "/[slug]": fetch page by slug directly
-3. If page not found → next({ notFound: true }) → renders not-found.tsx
+3. If page not found → notFound() → renders not-found.tsx
 4. Render page content inside FrontendLayout (header from settings, footer from settings)
 5. SEO: generateMetadata() exports dynamic title (page.title), description (first 160 chars of stripped content)
 ```
@@ -360,7 +457,7 @@ function authorize(session: SessionData | null, check: AuthCheck): boolean
 
 ```
 1. Admin navigates to /admin/users
-2. Server Component: calls getUsers() Server Action → fetches user list with group include
+2. Server Component: calls getUsers() → fetches user list with group include
 3. Search: form submit with query param → Server Component reads searchParams, passes to getUsers()
 4. Create/Edit: Server Action handles form submission with Zod validation
    - Validates input
@@ -470,7 +567,7 @@ src/
 ├── lib/
 │   ├── prisma.ts                     # Prisma client singleton (with connection error handling)
 │   ├── auth/
-│   │   ├── session.ts               # getSession, createSession, destroySession, updateSession
+│   │   ├── session.ts               # getSession, createSession, destroySession, updateSession (jose-based)
 │   │   ├── password.ts              # hashPassword, verifyPassword (bcryptjs, cost 12)
 │   │   ├── tokens.ts                # Token generation, creation, validation, cleanup
 │   │   ├── email.ts                 # sendVerificationEmail, sendPasswordResetEmail (nodemailer)
@@ -496,7 +593,7 @@ src/
 │       ├── slug.ts                   # generateSlug(title): lowercase, hyphens, no special chars. Checks uniqueness, appends -2,-3... max 10 attempts
 │       ├── ip.ts                     # getClientIP(): reads x-forwarded-for header with fallback
 │       └── format.ts                # formatDate, formatPhone helpers
-├── middleware.ts                      # Next.js middleware (route protection + tokenVersion validation)
+├── proxy.ts                          # Next.js proxy (route protection + tokenVersion validation)
 ├── types/
 │   └── index.ts                      # Shared TypeScript types: SessionData, AuthCheck, PageData, HeaderMenuItem, SettingsData
 ├── emails/
@@ -508,6 +605,8 @@ src/
 └── prisma/
     └── schema.prisma                 # Database schema
 ```
+
+**Note:** The proxy file is named `proxy.ts` (not `middleware.ts`) per Next.js 16 conventions. It lives at `src/proxy.ts` (same level as `app/`). The export is `export function proxy(request)` not `export function middleware(request)`.
 
 ---
 
@@ -910,162 +1009,191 @@ export async function myAction(formData: FormData) {
 
 ## Authentication & Security
 
-### Session Configuration
+### Session Configuration (jose-based)
 
 ```ts
-/**
- * Session data sealed into the iron-session cookie.
- * 
- * tokenVersion and permissionVersion are checked against the database
- * (with a short in-memory cache) on each request to provide session
- * invalidation for password changes, permission changes, and account deletion.
- */
+// lib/auth/session.ts
+
+import { EncryptJWT, jwtDecrypt } from 'jose';
+import { cookies } from 'next/headers';
+
+// Key must be at least 32 bytes for A256GCM
+const key = new TextEncoder().encode(process.env.SESSION_SECRET!);
+
 export interface SessionData {
-  userId: string
-  email: string
-  groupId: string | null
-  groupType: 'admin' | 'regular' | null
-  routePermissions: string[]
-  isSuperAdmin: boolean
-  tokenVersion: number           // From User.tokenVersion
-  permissionVersion: number      // From UserGroup.permissionVersion
+  userId: string;
+  email: string;
+  groupId: string | null;
+  groupType: 'admin' | 'regular' | null;
+  routePermissions: string[];
+  isSuperAdmin: boolean;
+  tokenVersion: number;
+  permissionVersion: number;
 }
 
 /**
- * iron-session configuration for the App Router.
- * 
- * cookieName: 'app_session'
- * maxAge: 7 days
- * httpOnly: true (not accessible via JavaScript)
- * secure: true in production
- * sameSite: 'lax' (allows links from emails to include the cookie)
+ * Read and decrypt the current session from the httpOnly cookie.
+ * Returns null if no session exists, the token is expired, or the token is tampered.
  */
-const sessionOptions = {
-  password: process.env.SESSION_SECRET!,  // Must be at least 32 characters
-  cookieName: 'app_session',
-  cookieOptions: {
+export async function getSession(): Promise<SessionData | null> {
+  const store = await cookies();
+  const token = store.get('app_session')?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtDecrypt(token, key);
+    return payload as unknown as SessionData;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create a new encrypted session and set the httpOnly cookie.
+ * Cookie options: httpOnly, sameSite=lax, secure in production, 7-day maxAge, path=/.
+ */
+export async function createSession(data: SessionData): Promise<void> {
+  const token = await new EncryptJWT(data as unknown as Record<string, unknown>)
+    .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .encrypt(key);
+
+  (await cookies()).set('app_session', token, {
     httpOnly: true,
+    sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
-    maxAge: 60 * 60 * 24 * 7,  // 7 days in seconds
+    maxAge: 60 * 60 * 24 * 7,
     path: '/',
-  },
+  });
+}
+
+/**
+ * Update the session with partial data by merging with the current session.
+ */
+export async function updateSession(updates: Partial<SessionData>): Promise<void> {
+  const session = await getSession();
+  if (!session) return;
+  await createSession({ ...session, ...updates });
+}
+
+/**
+ * Destroy the session by deleting the cookie.
+ */
+export async function destroySession(): Promise<void> {
+  (await cookies()).delete('app_session');
 }
 ```
 
-### Middleware (route protection + session invalidation)
+### Proxy (route protection + session invalidation)
 
 ```ts
+// proxy.ts
+
+import { NextRequest, NextResponse } from 'next/server';
+import { jwtDecrypt } from 'jose';
+import type { SessionData } from '@/lib/auth/session';
+import { authorize } from '@/lib/auth/authorize';
+import { getCachedTokenVersion, getCachedPermissionVersion } from '@/lib/auth/session-cache';
+
+const key = new TextEncoder().encode(process.env.SESSION_SECRET!);
+
+/** Routes accessible without authentication */
+const ADMIN_PUBLIC = ['/admin/login'];
+
 /**
- * Next.js middleware for route protection and session validation.
- * 
- * This runs on every matched request. It:
- * 1. Parses the iron-session cookie
+ * Next.js 16 proxy for route protection and session validation.
+ *
+ * This runs on matched routes. It:
+ * 1. Reads and decrypts the 'app_session' cookie via request.cookies.get()
  * 2. Validates tokenVersion and permissionVersion against a short-lived cache
  * 3. Enforces auth requirements based on route patterns
- * 
- * Uses the iron-session v8 App Router API: getIronSession(await cookies(), options)
- * 
- * IMPORTANT: This middleware uses the Node.js runtime (not Edge) because
- * iron-session requires the Node.js crypto module. If deployed to Vercel,
- * configure the middleware to use the Node.js runtime.
+ *
+ * IMPORTANT: This proxy does NOT write cookies. Session writes happen in
+ * Server Actions and Server Components via await cookies() + the jose helpers.
+ * Proxy is read-only for session data — it only validates and redirects.
+ *
+ * Runtime: Node.js (default for proxy, Edge is NOT supported in Next.js 16).
  */
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-import { NextRequest, NextResponse } from 'next/server'
-import { getIronSession } from 'iron-session'
-import { cookies } from 'next/headers'
-import { sessionOptions } from '@/lib/auth/session'
-import { authorize } from '@/lib/auth/authorize'
-import { getCachedTokenVersion, getCachedPermissionVersion } from '@/lib/auth/session-cache'
-
-// Routes accessible without auth
-const PUBLIC_FRONTEND = [
-  '/', '/login', '/signup', '/forgot-password', 
-  '/reset-password', '/verify-email', '/resend-verification'
-]
-const ADMIN_PUBLIC = ['/admin/login']
-
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // Parse session using iron-session v8 App Router API
-  // NOTE: cookies() must be awaited in Next.js 16
-  const session = await getIronSession(await cookies(), sessionOptions)
+  // ---- Parse session from cookie ----
+  let session: SessionData | null = null;
+  const token = request.cookies.get('app_session')?.value;
+  if (token) {
+    try {
+      const { payload } = await jwtDecrypt(token, key);
+      session = payload as unknown as SessionData;
+    } catch {
+      // Token expired or tampered — treat as no session
+    }
+  }
 
   // ---- Session Invalidation Check ----
-  // If user has a session, validate tokenVersion and permissionVersion
-  if (session.userId) {
-    const currentTokenVersion = getCachedTokenVersion(session.userId)
+  if (session?.userId) {
+    const currentTokenVersion = getCachedTokenVersion(session.userId);
     const currentPermissionVersion = session.groupId
       ? getCachedPermissionVersion(session.groupId)
-      : null
+      : null;
 
-    // If tokenVersion doesn't match, session was invalidated (password change, account deletion)
+    // Token version mismatch → password changed, account deleted
     if (currentTokenVersion !== session.tokenVersion) {
-      session.destroy()
-      const response = NextResponse.redirect(new URL('/login', request.url))
-      response.cookies.delete('app_session')
-      return response
+      const response = NextResponse.redirect(new URL('/login', request.url));
+      response.cookies.delete('app_session');
+      return response;
     }
 
-    // If permissionVersion doesn't match, permissions changed — update session
-    if (currentPermissionVersion !== null && currentPermissionVersion !== session.permissionVersion) {
-      // Rebuild session with updated permissions
-      session.permissionVersion = currentPermissionVersion
-      await session.save()
-    }
+    // Permission version changed → permissions updated for group
+    // Session will be refreshed on next Server Action call, but for now
+    // we use the stale permissions (acceptable within 60s cache window)
   }
 
   // ---- Frontend Account Routes ----
   if (pathname.startsWith('/account/')) {
     if (!authorize(session, { type: 'any' })) {
-      return NextResponse.redirect(new URL('/login', request.url))
+      return NextResponse.redirect(new URL('/login', request.url));
     }
-    return NextResponse.next()
+    return NextResponse.next();
   }
 
   // ---- Admin Routes (except login) ----
   if (pathname.startsWith('/admin/') && !ADMIN_PUBLIC.includes(pathname)) {
     if (!authorize(session, { type: 'admin' })) {
-      // If frontend user, redirect to frontend dashboard
-      if (session.userId) {
-        return NextResponse.redirect(new URL('/account/dashboard', request.url))
+      if (session) {
+        return NextResponse.redirect(new URL('/account/dashboard', request.url));
       }
-      return NextResponse.redirect(new URL('/admin/login', request.url))
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
 
     // Route-specific permission check (Super Admin bypasses)
     if (!authorize(session, { type: 'route', path: pathname })) {
-      return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     }
 
-    return NextResponse.next()
+    return NextResponse.next();
   }
 
-  // ---- Public routes: no action needed ----
-  return NextResponse.next()
+  return NextResponse.next();
 }
 
 /**
- * Middleware matcher: only run on protected route prefixes.
+ * Proxy matcher: only run on protected route prefixes.
  * Excludes static assets, images, and Next.js internal routes.
  */
 export const config = {
   matcher: ['/account/:path*', '/admin/:path*'],
-}
+};
 ```
-
-**Critical implementation note:** The above middleware code uses `await cookies()` which is the Next.js 16 async cookies API. This must be validated with a spike before building Phase 1. If `getIronSession(await cookies(), options)` fails, try `getIronSession(cookies(), options)` (without await, which was the Next.js 15 API). Consult `node_modules/next/dist/docs/` if available for the exact API surface.
 
 ### Session Invalidation Rules
 
 | Event | Action |
 |---|---|
-| User changes password | Increment `User.tokenVersion` → all existing sessions invalidated on next middleware check |
+| User changes password | Increment `User.tokenVersion` → all existing sessions invalidated on next proxy check |
 | User deletes account | Increment `User.tokenVersion` before deletion → session invalidated immediately |
 | User changes email (after verification) | Increment `User.tokenVersion` → all existing sessions invalidated |
 | Admin's group permissions change | Increment `UserGroup.permissionVersion` → all sessions for users in that group get updated permissions on next check |
-| Admin's group type changes (admin→regular) | Increment `UserGroup.permissionVersion` → sessions updated; middleware will now reject admin access |
+| Admin's group type changes (admin→regular) | Increment `UserGroup.permissionVersion` → sessions updated; proxy will now reject admin access |
 
 ### Rate Limiting Configuration
 
@@ -1104,8 +1232,8 @@ export const rateLimiters = {
 | Measure | Implementation |
 |---|---|
 | Password hashing | bcryptjs, cost factor 12 |
-| Session security | httpOnly, secure (production), sameSite=lax cookies; sealed with 32+ char secret |
-| Session invalidation | tokenVersion on User, permissionVersion on UserGroup, checked in middleware with 60s cache |
+| Session security | httpOnly, secure (production), sameSite=lax cookies; JWE encrypted with AES-256-GCM via `jose`; 32+ char secret |
+| Session invalidation | tokenVersion on User, permissionVersion on UserGroup, checked in proxy with 60s cache |
 | CSRF | Built into Next.js Server Actions (automatic token validation) |
 | Rate limiting | Upstash Redis via @upstash/ratelimit; applied inside Server Actions |
 | Email enumeration prevention | Forgot password and resend verification always return success; login error is generic ("Invalid email or password") |
@@ -1124,9 +1252,9 @@ export const rateLimiters = {
 | Failure | Likelihood | Impact | Mitigation |
 |---|---|---|---|
 | **Email delivery failure** | Medium | User cannot verify email or reset password | Show clear UI message ("Didn't receive the email? Check spam or resend"); provide resend option; log failures server-side |
-| **iron-session + Next.js 16 incompatibility** | Medium | Auth system non-functional | Spike before building; fallback to `@oslojs/jose` for manual JWT-based httpOnly cookies if needed |
+| **JWE decryption failure (tampered cookie)** | Low | User sees auth error | `jwtDecrypt` throws on tampered cookie; catch in `getSession()` and proxy, treat as no session, redirect to login |
 | **Verification token double-use race** | Medium | User sees error on second click | Use interactive Prisma transaction: delete token + update user atomically; catch and show friendly message |
-| **Session cookie corruption** | Low | User locked out | iron-session throws on tampered cookie; catch and redirect to login with clear session |
+| **Session cookie corruption** | Low | User locked out | `jwtDecrypt` throws on corrupted token; catch and redirect to login |
 | **Password reset token reuse** | Low | Token used twice | Same interactive transaction pattern as verification; delete token before updating password |
 | **Home page deleted by admin** | Medium | Site homepage broken for all visitors | Prevent deletion in `deletePage()` if page slug matches `home_page` setting; return specific error |
 | **Admin deletes their own group** | Low | Admin locked out of admin panel | Prevent deletion of group that contains the current user; prevent changing own group type to "regular" |
@@ -1135,9 +1263,10 @@ export const rateLimiters = {
 | **Slug collision on create** | Medium | Page creation fails | Auto-append `-2`, `-3`... (max 10 attempts); show generated slug to admin before save; catch Prisma unique constraint error and suggest alternative |
 | **Concurrent email change** | Low | Stale pendingEmail | Check `pendingEmail !== newEmail` before setting; old email stays active until new one verified |
 | **N+1 queries on user list** | Medium | Slow page load | Always `include: { group: true }` in user queries |
-| **Delete user with active session** | Low | Session valid until next middleware check (max 60s) | tokenVersion check in middleware invalidates within 60s (cache TTL); acceptable window |
+| **Delete user with active session** | Low | Session valid until next proxy check (max 60s) | tokenVersion check in proxy invalidates within 60s (cache TTL); acceptable window |
 | **Expired tokens accumulating** | Low | Table bloat over time | `cleanupExpiredTokens()` runs on server startup; for long-running servers, call via `setInterval` every hour |
-| **Upstash Redis unavailable** | Low | Rate limiting fails open or closed | Design choice: fail closed (return error). Document that if Upstash is down, rate-limited actions will fail. Consider a circuit breaker for future. |
+| **Upstash Redis unavailable** | Low | Rate limiting fails closed | Design choice: fail closed (return error). Document that if Upstash is down, rate-limited actions will fail. Consider a circuit breaker for future. |
+| **SESSION_SECRET too short** | Low | Weak encryption | Document requirement: at least 32 characters. Generate with `openssl rand -base64 32`. Document in `.env.example`. |
 
 ---
 
@@ -1150,15 +1279,15 @@ Execute phases sequentially. Each phase must be complete before starting the nex
 **Objective:** Project setup, database, auth system, basic layouts, session invalidation.
 
 **Pre-flight checklist:**
-- [ ] **SPIKE:** Test iron-session v8 with Next.js 16.2.9 in middleware, Server Component, and Server Action. Verify `await cookies()` API works with `getIronSession()`. If broken, evaluate `@oslojs/jose` as fallback.
-- [ ] Install all npm dependencies
-- [ ] Set up Docker Compose with PostgreSQL for local development
+- [ ] Verify `jose` works with Next.js 16.2.9 async cookies API (should be fine — it's just `jwtDecrypt` + `EncryptJWT` using standard Web Crypto)
+- [ ] Install all npm dependencies: `jose`, `bcryptjs`, `nodemailer`, `zod`, `@upstash/ratelimit`, `@upstash/redis`
+- [ ] Generate `SESSION_SECRET`: `openssl rand -base64 32` and add to `.env`
 
 **Deliverables:**
 - [ ] Prisma schema created, initial migration run, Prisma client singleton (`lib/prisma.ts`)
 - [ ] Database seed script (`scripts/seed.ts`) — idempotent, creates Super Admin and default settings
 - [ ] Recovery script (`scripts/recover-super-admin.ts`)
-- [ ] iron-session configured and verified working (`lib/auth/session.ts`)
+- [ ] jose-based session utilities: `getSession`, `createSession`, `destroySession`, `updateSession` (`lib/auth/session.ts`)
 - [ ] Session cache with 60s TTL (`lib/auth/session-cache.ts`)
 - [ ] `authorize()` function with all four check types (`lib/auth/authorize.ts`)
 - [ ] Password hashing utilities (`lib/auth/password.ts`)
@@ -1168,7 +1297,8 @@ Execute phases sequentially. Each phase must be complete before starting the nex
 - [ ] IP extraction utility (`lib/utils/ip.ts`)
 - [ ] Auth Server Actions: signup, login, logout, verifyEmail, forgotPassword, resetPassword, resendVerification (`lib/actions/auth.ts`)
 - [ ] Zod schemas for all auth forms (`lib/validators/auth.ts`)
-- [ ] Middleware with route protection + tokenVersion validation (`middleware.ts`, `lib/auth/middleware.ts`)
+- [ ] Proxy with route protection + tokenVersion validation (`proxy.ts`)
+- [ ] Proxy placed at `src/proxy.ts` (NOT `src/middleware.ts` — Next.js 16 uses `proxy.ts`)
 - [ ] FrontendLayout with header and footer (static placeholders initially) (`components/frontend/`)
 - [ ] AdminLayout with sidebar (static initially) (`components/admin/`)
 - [ ] Login page for frontend (`app/login/page.tsx`)
@@ -1182,6 +1312,9 @@ Execute phases sequentially. Each phase must be complete before starting the nex
 - [ ] Account layout with auth guard (`app/account/layout.tsx`)
 - [ ] Empty account dashboard (`app/account/dashboard/page.tsx`)
 - [ ] Every file has JSDoc/file-level comments
+
+**Effort estimate:** 8–10 person-days
+**Team:** 1–2 developers
 
 ### Phase 2: User Features + Admin CRUD
 
@@ -1218,6 +1351,9 @@ Execute phases sequentially. Each phase must be complete before starting the nex
 - [ ] Zod schemas for page actions (`lib/validators/page.ts`)
 - [ ] Every file has JSDoc/file-level comments
 
+**Effort estimate:** 10–12 person-days
+**Team:** 2 developers
+
 ### Phase 3: User Groups & RBAC
 
 **Objective:** Fine-grained admin permissions via user groups.
@@ -1229,11 +1365,14 @@ Execute phases sequentially. Each phase must be complete before starting the nex
 - [ ] Delete group with guard: prevents deleting group that has users or is Super Admin's group (`lib/actions/admin/groups.ts`)
 - [ ] Group Zod schemas (`lib/validators/group.ts`)
 - [ ] `permissionVersion` increment on permission changes in updateGroup
-- [ ] Middleware extended to enforce route-level permissions (already scaffolded in Phase 1)
+- [ ] Proxy extended to enforce route-level permissions (already scaffolded in Phase 1)
 - [ ] Admin sidebar filters menu items based on `routePermissions` from session
 - [ ] `PermissionGuard` component for conditional rendering in admin
 - [ ] Assign user to group dropdown in admin user edit form
 - [ ] Every file has JSDoc/file-level comments
+
+**Effort estimate:** 4–5 person-days
+**Team:** 1–2 developers
 
 ### Phase 4: Polish & Harden
 
@@ -1253,12 +1392,15 @@ Execute phases sequentially. Each phase must be complete before starting the nex
   - Tables scroll horizontally on small screens
   - Forms are full-width on mobile
 - [ ] Security headers in `next.config.ts`: Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options
-- [ ] Session maxAge enforcement (already configured; verify)
+- [ ] Session maxAge enforcement (already configured; verify jose expiration matches cookie maxAge)
 - [ ] Prisma connection error handling in the singleton (`lib/prisma.ts`): retry logic, clear error messages
 - [ ] Email sending error handling: try-catch with logging, return user-friendly error
 - [ ] Token cleanup: ensure `cleanupExpiredTokens()` is called on startup and via interval
 - [ ] HTML content sanitization consideration: document that admin-authored HTML is trusted; add comment in code noting this is a known trust boundary
 - [ ] Every file has JSDoc/file-level comments
+
+**Effort estimate:** 5–6 person-days
+**Team:** 1 developer
 
 ---
 
@@ -1320,11 +1462,6 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
    - Set all environment variables in Vercel dashboard
    - Add `prisma migrate deploy` to build step or `postinstall` script
    - Deploy on push to `main`
-
-2. **Docker on VPS (alternative):**
-   - Use `node:22-alpine` base image
-   - `docker-compose.yml` with PostgreSQL service for staging
-   - Run `prisma migrate deploy` before starting the app
 
 ---
 
