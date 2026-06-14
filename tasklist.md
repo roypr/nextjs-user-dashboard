@@ -13,7 +13,7 @@
 
 ### 1.1 — Database & Prisma
 
-- [ ] Create `prisma/schema.prisma` with all models: User, UserGroup, Page, Setting, EmailVerificationToken, PasswordResetToken — include all fields, relations, indexes, and comments as specified in plan.md
+- [x] Create `prisma/schema.prisma` with all models: User, UserGroup, Page, Setting, EmailVerificationToken, PasswordResetToken — include all fields, relations, indexes, and comments as specified in plan.md
 - [ ] Run `npx prisma migrate dev --name init` to generate migration and apply it
 - [ ] Create `src/lib/prisma.ts` — Prisma client singleton with connection error handling and retry logic
 

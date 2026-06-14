@@ -1,0 +1,123 @@
+// Prisma schema for User Management System + CMS
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+}
+
+/// Represents a user group for RBAC. Types: "admin" or "regular".
+/// Admin-type groups have route-based access control.
+model UserGroup {
+  id               String   @id @default(cuid()) @map("id")
+  /// Display name for the group (e.g., "Super Admins", "Content Editors")
+  name             String   @unique @map("name")
+  /// Group type: "admin" for admin panel access, "regular" for standard users
+  type             String   @default("regular") @map("type")
+  /// Route permission patterns for admin-type groups (e.g., ["/admin/users", "/admin/pages"])
+  routePermissions String[] @default([]) @map("route_permissions")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  users User[]
+
+  @@map("user_groups")
+}
+
+/// Core user model. Supports both frontend and admin users.
+model User {
+  id             String    @id @default(cuid()) @map("id")
+  /// User's display name
+  name           String?   @map("name")
+  /// Primary email address — used for login and verification
+  email          String    @unique @map("email")
+  /// Pending email address — set during email change flow; verified before replacing primary
+  pendingEmail   String?   @map("pending_email")
+  /// bcryptjs hash of user's password
+  passwordHash   String    @map("password_hash")
+  /// Whether the primary email has been verified
+  emailVerified  Boolean   @default(false) @map("email_verified")
+  /// Phone number (optional)
+  phone          String?   @map("phone")
+  /// Physical address (optional)
+  address        String?   @map("address")
+  /// Session invalidation counter — incremented on password change, account deletion, etc.
+  tokenVersion   Int       @default(0) @map("token_version")
+  /// Reference to the user's group
+  groupId        String?   @map("group_id")
+  group          UserGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+
+  @@index([groupId])
+  @@index([email])
+  @@map("users")
+}
+
+/// CMS pages with HTML content and SEO-friendly slugs.
+model Page {
+  id        String   @id @default(cuid()) @map("id")
+  /// Page title (plain text)
+  title     String   @map("title")
+  /// URL slug — unique, auto-generated from title with collision handling
+  slug      String   @unique @map("slug")
+  /// Page content as HTML
+  content   String   @default("") @map("content")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([slug])
+  @@map("pages")
+}
+
+/// Key-value settings store for site configuration.
+model Setting {
+  id    String @id @default(cuid()) @map("id")
+  /// Setting key (e.g., "site_name", "home_page", "header_menu_logged_out")
+  key   String @unique @map("key")
+  /// Setting value as string (JSON-encoded for complex structures like menus)
+  value String @default("") @map("value")
+
+  @@map("settings")
+}
+
+/// One-time email verification tokens for signup and email change flows.
+model EmailVerificationToken {
+  id        String   @id @default(cuid()) @map("id")
+  /// The verification token string (generated via crypto.randomUUID)
+  token     String   @unique @map("token")
+  /// The user this token belongs to
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Optional: new email address to verify (used during email change flow)
+  newEmail  String?  @map("new_email")
+  /// Token expiration timestamp
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([token])
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+/// One-time password reset tokens for forgot-password flow.
+model PasswordResetToken {
+  id        String   @id @default(cuid()) @map("id")
+  /// The reset token string (generated via crypto.randomUUID)
+  token     String   @unique @map("token")
+  /// The user requesting the password reset
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Token expiration timestamp
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
