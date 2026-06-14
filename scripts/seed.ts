@@ -47,6 +47,7 @@ async function main() {
         data: {
           type: "admin",
           routePermissions: ["*"],
+          permissionVersion: superAdminGroup.permissionVersion + 1,
         },
       });
       console.log(`ℹ️  Updated group: ${groupName}`);

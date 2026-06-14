@@ -5,26 +5,12 @@
  */
 
 import prisma from "@/lib/prisma";
+import { slugify } from "@/lib/utils/slugify";
 
 const MAX_COLLISION_ATTEMPTS = 10;
 
 /**
- * Generates a URL-friendly slug from a title string.
- * Lowercases, converts spaces to hyphens, removes special characters.
- * @param title - The source string to convert to a slug.
- * @returns The basic slug without collision handling.
- */
-export function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")   // Remove special characters
-    .replace(/\s+/g, "-")       // Replace spaces with hyphens
-    .replace(/-+/g, "-")        // Collapse multiple hyphens
-    .replace(/^-+|-+$/g, "");   // Trim leading/trailing hyphens
-}
-
-/**
+ * Generates a unique slug from a title by checking the database for collisions.
  * Generates a unique slug from a title by checking the database for collisions.
  * If the slug already exists, appends -2, -3, etc. (up to MAX_COLLISION_ATTEMPTS).
  * @param title - The source string to generate a slug from.

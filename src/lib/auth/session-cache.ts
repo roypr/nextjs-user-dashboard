@@ -62,11 +62,10 @@ export async function getCachedPermissionVersion(
   // Cache miss — query the database
   const group = await prisma.userGroup.findUnique({
     where: { id: groupId },
-    select: { updatedAt: true },
+    select: { permissionVersion: true },
   });
 
-  // Use the group's updatedAt timestamp as a version indicator
-  const version = group ? group.updatedAt.getTime() : 0;
+  const version = group?.permissionVersion ?? 0;
   permissionVersionCache.set(groupId, { value: version, expiresAt: now + CACHE_TTL_MS });
   return version;
 }

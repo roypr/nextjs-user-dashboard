@@ -41,7 +41,7 @@ export async function connectWithRetry(): Promise<void> {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       await prisma.$connect();
-      console.log("Prisma connected successfully");
+      // Connected successfully
       return;
     } catch (error) {
       console.error(

@@ -14,32 +14,32 @@
 ### 1.1 — Database & Prisma
 
 - [x] Create `prisma/schema.prisma` with all models: User, UserGroup, Page, Setting, EmailVerificationToken, PasswordResetToken — include all fields, relations, indexes, and comments as specified in plan.md
-- [ ] Run `npx prisma migrate dev --name init` to generate migration and apply it
-- [ ] Create `src/lib/prisma.ts` — Prisma client singleton with connection error handling and retry logic
+- [x] Run `npx prisma migrate dev --name init` to generate migration and apply it
+- [x] Create `src/lib/prisma.ts` — Prisma client singleton with connection error handling and retry logic
 
 ### 1.2 — Types
 
-- [ ] Create `src/types/index.ts` — shared TypeScript types: `SessionData`, `AuthCheck`, `PageData`, `HeaderMenuItem`, `SettingsData`
+- [x] Create `src/types/index.ts` — shared TypeScript types: `SessionData`, `AuthCheck`, `PageData`, `HeaderMenuItem`, `SettingsData`
 
 ### 1.3 — Auth Core Library (`src/lib/auth/`)
 
-- [ ] Create `src/lib/auth/session.ts` — jose-based session utilities:
+- [x] Create `src/lib/auth/session.ts` — jose-based session utilities:
   - `getSession()` — reads `app_session` cookie, decrypts JWE via `jwtDecrypt()`, returns `SessionData | null`
   - `createSession(data)` — encrypts SessionData into JWE via `EncryptJWT` (alg: dir, enc: A256GCM, exp: 7d), sets httpOnly cookie (sameSite: lax, secure in production, path: /)
   - `updateSession(updates)` — reads current session, merges updates, re-creates cookie
   - `destroySession()` — deletes `app_session` cookie
   - Uses `SESSION_SECRET` from env (must be ≥32 chars for A256GCM)
-- [ ] Create `src/lib/auth/password.ts` — `hashPassword()`, `verifyPassword()` using bcryptjs cost factor 12
-- [ ] Create `src/lib/auth/tokens.ts` — `generateToken()` (crypto.randomUUID), `createVerificationToken()`, `createPasswordResetToken()`, `validateToken()`, `cleanupExpiredTokens()`
-- [ ] Create `src/lib/auth/email.ts` — `sendVerificationEmail()`, `sendPasswordResetEmail()` via nodemailer configured with SMTP env vars (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM)
-- [ ] Create `src/lib/auth/authorize.ts` — unified `authorize(session, check)` function supporting all four check types:
+- [x] Create `src/lib/auth/password.ts` — `hashPassword()`, `verifyPassword()` using bcryptjs cost factor 12
+- [x] Create `src/lib/auth/tokens.ts` — `generateToken()` (crypto.randomUUID), `createVerificationToken()`, `createPasswordResetToken()`, `validateToken()`, `cleanupExpiredTokens()`
+- [x] Create `src/lib/auth/email.ts` — `sendVerificationEmail()`, `sendPasswordResetEmail()` via nodemailer configured with SMTP env vars (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM)
+- [x] Create `src/lib/auth/authorize.ts` — unified `authorize(session, check)` function supporting all four check types:
   - `{ type: 'any' }` — any authenticated user
   - `{ type: 'admin' }` — user in group with type "admin"
   - `{ type: 'route', path: string }` — admin user with matching route permission (startsWith pattern matching; Super Admin always passes)
   - `{ type: 'super_admin' }` — session email matches `SUPER_ADMIN_EMAIL` env var
   - MUST implement all four check types now even though route/super_admin enforcement comes in Phase 3
-- [ ] Create `src/lib/auth/session-cache.ts` — in-memory `Map` cache for tokenVersion (keyed by userId) and permissionVersion (keyed by groupId), 60s TTL. Exports `getCachedTokenVersion(userId)` and `getCachedPermissionVersion(groupId)`. On cache miss, queries DB and populates cache.
-- [ ] Create `src/lib/auth/rate-limiter.ts` — wraps `@upstash/ratelimit` + `@upstash/redis`. Export `rateLimit()` factory function and pre-configured limiters:
+- [x] Create `src/lib/auth/session-cache.ts` — in-memory `Map` cache for tokenVersion (keyed by userId) and permissionVersion (keyed by groupId), 60s TTL. Exports `getCachedTokenVersion(userId)` and `getCachedPermissionVersion(groupId)`. On cache miss, queries DB and populates cache.
+- [x] Create `src/lib/auth/rate-limiter.ts` — wraps `@upstash/ratelimit` + `@upstash/redis`. Export `rateLimit()` factory function and pre-configured limiters:
   - `login`: 5 attempts per IP per 60s
   - `signup`: 3 attempts per IP per 1h
   - `forgotPassword`: 3 attempts per IP per 1h
@@ -48,16 +48,16 @@
 
 ### 1.4 — Utilities
 
-- [ ] Create `src/lib/utils/ip.ts` — `getClientIP()` reads `x-forwarded-for` header with fallback to `127.0.0.1`
-- [ ] Create `src/lib/utils/slug.ts` — `generateSlug(title)` — lowercase, hyphens, no special chars; checks DB for uniqueness, appends `-2`, `-3`... max 10 attempts
+- [x] Create `src/lib/utils/ip.ts` — `getClientIP()` reads `x-forwarded-for` header with fallback to `127.0.0.1`
+- [x] Create `src/lib/utils/slug.ts` — `generateSlug(title)` — lowercase, hyphens, no special chars; checks DB for uniqueness, appends `-2`, `-3`... max 10 attempts
 
 ### 1.5 — Zod Validators
 
-- [ ] Create `src/lib/validators/auth.ts` — `signupSchema`, `loginSchema`, `forgotPasswordSchema`, `resetPasswordSchema` — all fields use `.describe()`
+- [x] Create `src/lib/validators/auth.ts` — `signupSchema`, `loginSchema`, `forgotPasswordSchema`, `resetPasswordSchema` — all fields use `.describe()`
 
 ### 1.6 — Auth Server Actions
 
-- [ ] Create `src/lib/actions/auth.ts` — Server Actions following the mandatory validation pattern (session → authorize → rate limit → validate → operate → revalidate → return):
+- [x] Create `src/lib/actions/auth.ts` — Server Actions following the mandatory validation pattern (session → authorize → rate limit → validate → operate → revalidate → return):
   - `signup(formData)` — creates user with emailVerified=false, generates verification token, sends email. Rate limited: 3 per IP per hour.
   - `login(formData)` — validates credentials, checks `isAdmin` flag (if true, additionally checks group type is "admin"), creates session, redirects to dashboard. Rate limited: 5 per IP per 60s. Error message is generic ("Invalid email or password").
   - `logout()` — calls destroySession(), redirects to /
@@ -68,7 +68,7 @@
 
 ### 1.7 — Proxy (Route Protection)
 
-- [ ] Create `src/proxy.ts` — NOT `src/middleware.ts` (Next.js 16 convention: `export function proxy(request)` not `export function middleware(request)`)
+- [x] Create `src/proxy.ts` — NOT `src/middleware.ts` (Next.js 16 convention: `export function proxy(request)` not `export function middleware(request)`)
   - Reads and decrypts `app_session` cookie via `request.cookies.get()` + `jwtDecrypt()`
   - Validates tokenVersion against `getCachedTokenVersion()` — if mismatch, redirect to login and delete cookie
   - Validates permissionVersion against `getCachedPermissionVersion()` — if mismatch, allow through with stale permissions (acceptable within 60s cache window)
@@ -77,72 +77,72 @@
   - `/admin/*` (except `/admin/login`) → requires `authorize(session, { type: 'route', path })`, else redirect to `/admin/dashboard`
   - Exports `config` with matcher: `['/account/:path*', '/admin/:path*']`
   - Cookie writes are NOT done here — proxy is read-only for sessions
-- [ ] IMPORTANT: Place proxy at `src/proxy.ts` (same level as `app/`). Export signature: `export async function proxy(request: NextRequest)`
+- [x] IMPORTANT: Place proxy at `src/proxy.ts` (same level as `app/`). Export signature: `export async function proxy(request: NextRequest)`
 
 ### 1.8 — Shared Components
 
-- [ ] Create `src/components/shared/alert.tsx` — Alert component, props: `type` ('success' | 'error' | 'info'), `message`. Styled with Tailwind.
-- [ ] Create `src/components/shared/loading-spinner.tsx` — Loading spinner component
-- [ ] Create `src/components/shared/button.tsx` — Reusable Button component with variant support (primary, secondary, danger)
-- [ ] Create `src/components/shared/input.tsx` — Reusable Input component with label and error message display
+- [x] Create `src/components/shared/alert.tsx` — Alert component, props: `type` ('success' | 'error' | 'info'), `message`. Styled with Tailwind.
+- [x] Create `src/components/shared/loading-spinner.tsx` — Loading spinner component
+- [x] Create `src/components/shared/button.tsx` — Reusable Button component with variant support (primary, secondary, danger)
+- [x] Create `src/components/shared/input.tsx` — Reusable Input component with label and error message display
 
 ### 1.9 — Frontend Layout
 
-- [ ] Create `src/components/frontend/header.tsx` — Header component (static placeholder: site name, Home + Login links for now; will become dynamic in Phase 2)
-- [ ] Create `src/components/frontend/footer.tsx` — Footer component (static placeholder: "Powered by Next.js" text)
-- [ ] Create `src/components/frontend/frontend-layout.tsx` — Header + `<main>{children}</main>` + footer wrapper
-- [ ] Update `src/app/layout.tsx` — wrap children in `<FrontendLayout>`, keep existing font setup, update metadata to use `NEXT_PUBLIC_SITE_URL`
+- [x] Create `src/components/frontend/header.tsx` — Header component (static placeholder: site name, Home + Login links for now; will become dynamic in Phase 2)
+- [x] Create `src/components/frontend/footer.tsx` — Footer component (static placeholder: "Powered by Next.js" text)
+- [x] Create `src/components/frontend/frontend-layout.tsx` — Header + `<main>{children}</main>` + footer wrapper
+- [x] Update `src/app/layout.tsx` — wrap children in `<FrontendLayout>`, keep existing font setup, update metadata to use `NEXT_PUBLIC_SITE_URL`
 
 ### 1.10 — Admin Layout
 
-- [ ] Create `src/components/admin/sidebar.tsx` — Admin sidebar with navigation links (Dashboard, Users, Pages, Settings — static for now, Groups hidden until Phase 3)
-- [ ] Create `src/components/admin/admin-layout.tsx` — Sidebar + `<main>{children}</main>` wrapper
-- [ ] Create `src/app/admin/layout.tsx` — wraps children in AdminLayout, calls `authorize(session, { type: 'admin' })` and redirects if unauthorized
+- [x] Create `src/components/admin/sidebar.tsx` — Admin sidebar with navigation links (Dashboard, Users, Pages, Settings — static for now, Groups hidden until Phase 3)
+- [x] Create `src/components/admin/admin-layout.tsx` — Sidebar + `<main>{children}</main>` wrapper
+- [x] Create `src/app/admin/layout.tsx` — wraps children in AdminLayout, calls `authorize(session, { type: 'admin' })` and redirects if unauthorized
 
 ### 1.11 — Auth Pages (Frontend)
 
-- [ ] Create `src/app/login/page.tsx` — Frontend login form (email + password inputs, submit button, link to signup and forgot password). Uses `useActionState` with `login` Server Action. If already logged in, show message instead of form.
-- [ ] Create `src/app/signup/page.tsx` — Registration form (email + password + confirm password). Uses `useActionState` with `signup` Server Action.
-- [ ] Create `src/app/forgot-password/page.tsx` — Email input form. Uses `useActionState` with `forgotPassword` Server Action. Always shows success message after submit.
-- [ ] Create `src/app/reset-password/page.tsx` — Reads `token` from `searchParams`. Form with new password + confirm. Uses `useActionState` with `resetPassword` Server Action.
-- [ ] Create `src/app/verify-email/page.tsx` — Reads `token` from `searchParams`. Calls `verifyEmail` on mount. Shows success or error.
-- [ ] Create `src/app/resend-verification/page.tsx` — Email input form. Uses `useActionState` with `resendVerification` Server Action. Always shows success message.
+- [x] Create `src/app/login/page.tsx` — Frontend login form (email + password inputs, submit button, link to signup and forgot password). Uses `useActionState` with `login` Server Action. If already logged in, show message instead of form.
+- [x] Create `src/app/signup/page.tsx` — Registration form (email + password + confirm password). Uses `useActionState` with `signup` Server Action.
+- [x] Create `src/app/forgot-password/page.tsx` — Email input form. Uses `useActionState` with `forgotPassword` Server Action. Always shows success message after submit.
+- [x] Create `src/app/reset-password/page.tsx` — Reads `token` from `searchParams`. Form with new password + confirm. Uses `useActionState` with `resetPassword` Server Action.
+- [x] Create `src/app/verify-email/page.tsx` — Reads `token` from `searchParams`. Calls `verifyEmail` on mount. Shows success or error.
+- [x] Create `src/app/resend-verification/page.tsx` — Email input form. Uses `useActionState` with `resendVerification` Server Action. Always shows success message.
 
 ### 1.12 — Auth Pages (Admin)
 
-- [ ] Create `src/app/admin/login/page.tsx` — Admin login form (email + password, `isAdmin: true` flag passed to login action). Only allows users in admin-type groups.
-- [ ] Create `src/app/admin/dashboard/page.tsx` — Empty admin dashboard with welcome message
+- [x] Create `src/app/admin/login/page.tsx` — Admin login form (email + password, `isAdmin: true` flag passed to login action). Only allows users in admin-type groups.
+- [x] Create `src/app/admin/dashboard/page.tsx` — Empty admin dashboard with welcome message
 
 ### 1.13 — Account Area
 
-- [ ] Create `src/app/account/layout.tsx` — Protected layout: calls `getSession()` + `authorize(session, { type: 'any' })`, redirects to `/login` if unauthorized
-- [ ] Create `src/app/account/dashboard/page.tsx` — Empty dashboard with welcome message showing user's email
+- [x] Create `src/app/account/layout.tsx` — Protected layout: calls `getSession()` + `authorize(session, { type: 'any' })`, redirects to `/login` if unauthorized
+- [x] Create `src/app/account/dashboard/page.tsx` — Empty dashboard with welcome message showing user's email
 
 ### 1.14 — Seed & Recovery Scripts
 
-- [ ] Create `scripts/seed.ts` — Idempotent seed script:
+- [x] Create `scripts/seed.ts` — Idempotent seed script:
   - Creates "Super Admins" group if not exists (type="admin", routePermissions=["*"])
   - Creates or updates Super Admin user (email from `SUPER_ADMIN_EMAIL` env var, password from `SUPER_ADMIN_PASSWORD`, emailVerified=true, assigned to Super Admins group)
   - Inserts default settings if Setting table is empty: `home_page` (empty string), `header_menu_logged_out`, `header_menu_logged_in`, `footer_content`, `site_name`
   - Uses Prisma client directly
-- [ ] Create `scripts/recover-super-admin.ts` — CLI script that reads `SUPER_ADMIN_EMAIL` from env, updates email + password hash, increments tokenVersion. Usage: `npx tsx scripts/recover-super-admin.ts --email new@example.com --password newpass`
+- [x] Create `scripts/recover-super-admin.ts` — CLI script that reads `SUPER_ADMIN_EMAIL` from env, updates email + password hash, increments tokenVersion. Usage: `npx tsx scripts/recover-super-admin.ts --email new@example.com --password newpass`
 
 ### Phase 1 Verification Checklist
 
-- [ ] Every file has JSDoc/file-level comments
-- [ ] All exported functions have JSDoc (purpose, parameters, return type)
-- [ ] Prisma schema has comments on each model and non-obvious field
-- [ ] Zod schemas use `.describe()` on all fields
-- [ ] Server Actions document required authorization level
-- [ ] `authorize()` function works for all four check types
-- [ ] Login/logout flow works end-to-end (frontend and admin)
-- [ ] Session cookie is httpOnly, sameSite=lax
-- [ ] Proxy protects `/account/*` routes (redirects to login)
-- [ ] Proxy protects `/admin/*` routes except `/admin/login` (redirects to admin login)
-- [ ] Session invalidation: change password tokenVersion → session rejected by proxy
-- [ ] Email verification flow works (token generated, stored, consumed in transaction)
-- [ ] Seed script runs idempotently
-- [ ] Recovery script works
+- [x] Every file has JSDoc/file-level comments
+- [x] All exported functions have JSDoc (purpose, parameters, return type)
+- [x] Prisma schema has comments on each model and non-obvious field
+- [x] Zod schemas use `.describe()` on all fields
+- [x] Server Actions document required authorization level
+- [x] `authorize()` function works for all four check types
+- [x] Login/logout flow works end-to-end (frontend and admin)
+- [x] Session cookie is httpOnly, sameSite=lax
+- [x] Proxy protects `/account/*` routes (redirects to login)
+- [x] Proxy protects `/admin/*` routes except `/admin/login` (redirects to admin login)
+- [x] Session invalidation: change password tokenVersion → session rejected by proxy
+- [x] Email verification flow works (token generated, stored, consumed in transaction)
+- [x] Seed script runs idempotently
+- [x] Recovery script works
 
 ---
 
@@ -152,8 +152,8 @@
 
 ### 2.1 — User Validators & Actions
 
-- [ ] Create `src/lib/validators/user.ts` — `updateProfileSchema`, `changePasswordSchema`, `changeEmailSchema`, `deleteAccountSchema` — all fields use `.describe()`
-- [ ] Create `src/lib/actions/user.ts` — Server Actions following mandatory pattern:
+- [x] Create `src/lib/validators/user.ts` — `updateProfileSchema`, `changePasswordSchema`, `changeEmailSchema`, `deleteAccountSchema` — all fields use `.describe()`
+- [x] Create `src/lib/actions/user.ts` — Server Actions following mandatory pattern:
   - `updateProfile(formData)` — updates name, phone, address. Auth: any.
   - `changePassword(formData)` — verifies current password, hashes new password, increments `tokenVersion`. Auth: any.
   - `changeEmail(formData)` — sets `pendingEmail`, sends verification email to new address. Old email stays active. Auth: any.
@@ -161,42 +161,42 @@
 
 ### 2.2 — User Account Pages
 
-- [ ] Create `src/app/account/profile/page.tsx` — View/edit form with name, email (read-only), phone, address fields. Uses `updateProfile` action.
-- [ ] Create `src/app/account/change-password/page.tsx` — Current password + new password + confirm. Uses `changePassword` action. Shows success message on completion.
-- [ ] Create `src/app/account/change-email/page.tsx` — New email input. Uses `changeEmail` action. Shows message to check inbox for verification.
-- [ ] Create `src/app/account/delete-profile/page.tsx` — Password confirmation. Uses `deleteAccount` action with ConfirmDialog. Shows warning about data loss.
+- [x] Create `src/app/account/profile/page.tsx` — View/edit form with name, email (read-only), phone, address fields. Uses `updateProfile` action.
+- [x] Create `src/app/account/change-password/page.tsx` — Current password + new password + confirm. Uses `changePassword` action. Shows success message on completion.
+- [x] Create `src/app/account/change-email/page.tsx` — New email input. Uses `changeEmail` action. Shows message to check inbox for verification.
+- [x] Create `src/app/account/delete-profile/page.tsx` — Password confirmation. Uses `deleteAccount` action with ConfirmDialog. Shows warning about data loss.
 
 ### 2.3 — Admin Users CRUD
 
-- [ ] Create `src/lib/actions/admin/users.ts` — Server Actions:
+- [x] Create `src/lib/actions/admin/users.ts` — Server Actions:
   - `getUsers(query)` — paginated list with optional search by name/email/phone. Includes group relation. Auth: admin + route `/admin/users`.
   - `createUser(formData)` — creates new user with provided email, password, name, groupId. Auth: admin + route `/admin/users`.
   - `updateUser(id, formData)` — updates name, email, phone, address, groupId. Cannot change Super Admin's email. Auth: admin + route `/admin/users`.
   - `deleteUser(id)` — deletes user. Prevents deleting Super Admin. Auth: admin + route `/admin/users`.
-- [ ] Create `src/app/admin/users/page.tsx` — User list table with columns: name, email, phone, group, verified, actions. Search form at top (submit-driven, no debounce). Pagination at bottom.
-- [ ] Create `src/app/admin/users/create/page.tsx` — Create user form: email, password, name, group dropdown. Uses `createUser` action.
-- [ ] Create `src/app/admin/users/[id]/edit/page.tsx` — Edit user form: name, email (read-only if Super Admin), phone, address, group dropdown. Uses `updateUser` action.
+- [x] Create `src/app/admin/users/page.tsx` — User list table with columns: name, email, phone, group, verified, actions. Search form at top (submit-driven, no debounce). Pagination at bottom.
+- [x] Create `src/app/admin/users/create/page.tsx` — Create user form: email, password, name, group dropdown. Uses `createUser` action.
+- [x] Create `src/app/admin/users/[id]/edit/page.tsx` — Edit user form: name, email (read-only if Super Admin), phone, address, group dropdown. Uses `updateUser` action.
 
 ### 2.4 — Admin Pages CRUD
 
-- [ ] Create `src/lib/validators/page.ts` — `createPageSchema`, `updatePageSchema` — all fields use `.describe()`
-- [ ] Create `src/lib/actions/admin/pages.ts` — Server Actions:
+- [x] Create `src/lib/validators/page.ts` — `createPageSchema`, `updatePageSchema` — all fields use `.describe()`
+- [x] Create `src/lib/actions/admin/pages.ts` — Server Actions:
   - `getPages(query)` — paginated list with optional search by title. Auth: admin + route `/admin/pages`.
   - `createPage(formData)` — creates page. If no slug provided, auto-generates from title with collision handling. Catches Prisma unique constraint error and suggests alternative slug. Auth: admin + route `/admin/pages`.
   - `updatePage(id, formData)` — updates title, content, slug. Slug must remain unique. Auth: admin + route `/admin/pages`.
   - `deletePage(id)` — deletes page. Refuses if page slug matches `home_page` setting. Auth: admin + route `/admin/pages`.
-- [ ] Create `src/app/admin/pages/page.tsx` — Page list table with columns: title, slug, updatedAt, actions. Search form at top. Pagination.
-- [ ] Create `src/app/admin/pages/create/page.tsx` — Create page form: title input → slug auto-generated and displayed below (re-runs on title change via client-side state), content HTML textarea. Uses `createPage` action.
-- [ ] Create `src/app/admin/pages/[id]/edit/page.tsx` — Edit page form: title, slug override, content HTML textarea. Uses `updatePage` action.
+- [x] Create `src/app/admin/pages/page.tsx` — Page list table with columns: title, slug, updatedAt, actions. Search form at top. Pagination.
+- [x] Create `src/app/admin/pages/create/page.tsx` — Create page form: title input → slug auto-generated and displayed below (re-runs on title change via client-side state), content HTML textarea. Uses `createPage` action.
+- [x] Create `src/app/admin/pages/[id]/edit/page.tsx` — Edit page form: title, slug override, content HTML textarea. Uses `updatePage` action.
 
 ### 2.5 — Settings
 
-- [ ] Create `src/lib/settings-cache.ts` — Module-level cache for settings with 60s TTL. Stores parsed settings object. `getCachedSettings()` returns cached or fetches from DB. `invalidateSettingsCache()` called after updates.
-- [ ] Create `src/lib/validators/settings.ts` — `settingsSchema` — validates each setting key's structure (home_page as string, menus as JSON arrays of {label, href}, footer_content as string, site_name as string ≤100 chars)
-- [ ] Create `src/lib/actions/admin/settings.ts` — Server Actions:
+- [x] Create `src/lib/settings-cache.ts` — Module-level cache for settings with 60s TTL. Stores parsed settings object. `getCachedSettings()` returns cached or fetches from DB. `invalidateSettingsCache()` called after updates.
+- [x] Create `src/lib/validators/settings.ts` — `settingsSchema` — validates each setting key's structure (home_page as string, menus as JSON arrays of {label, href}, footer_content as string, site_name as string ≤100 chars)
+- [x] Create `src/lib/actions/admin/settings.ts` — Server Actions:
   - `getSettings()` — returns typed settings object (from cache or DB). Auth: admin + route `/admin/settings`.
   - `updateSettings(formData)` — validates each setting, writes to DB, invalidates cache. Auth: admin + route `/admin/settings`.
-- [ ] Create `src/app/admin/settings/page.tsx` — Settings form:
+- [x] Create `src/app/admin/settings/page.tsx` — Settings form:
   - Site name: text input
   - Home page: `<select>` dropdown of all page slugs
   - Header menu (logged-out): JSON textarea — admin edits `[{label, href}]` directly
@@ -206,32 +206,32 @@
 
 ### 2.6 — Shared Components (Phase 2)
 
-- [ ] Create `src/components/shared/pagination.tsx` — Reusable pagination with Previous/Next buttons and page numbers. Props: `currentPage`, `totalPages`, `baseUrl`.
-- [ ] Create `src/components/shared/search-input.tsx` — Simple search form with text input and submit button. Wraps in `<form>` that submits via query params (no debounce for MVP).
-- [ ] Create `src/components/shared/confirm-dialog.tsx` — Delete confirmation modal using `<dialog>` element. Props: `title`, `message`, `onConfirm`, `onCancel`.
+- [x] Create `src/components/shared/pagination.tsx` — Reusable pagination with Previous/Next buttons and page numbers. Props: `currentPage`, `totalPages`, `baseUrl`.
+- [x] Create `src/components/shared/search-input.tsx` — Simple search form with text input and submit button. Wraps in `<form>` that submits via query params (no debounce for MVP).
+- [x] Create `src/components/shared/confirm-dialog.tsx` — Delete confirmation modal using `<dialog>` element. Props: `title`, `message`, `onConfirm`, `onCancel`.
 
 ### 2.7 — Public-Facing Dynamic Pages
 
-- [ ] Create `src/app/page.tsx` — Home page Server Component: calls `getSettings()` → reads `home_page` slug → fetches `Page` by slug → renders title + content (dangerouslySetInnerHTML for content). If no home page set, show a default landing page. Export `generateMetadata()` for SEO.
-- [ ] Create `src/app/[slug]/page.tsx` — Dynamic CMS page Server Component: fetches `Page` by slug → if not found, calls `notFound()` → renders title + content (dangerouslySetInnerHTML). Export `generateMetadata()` with page title + description (first 160 chars of stripped content).
-- [ ] Update `src/components/frontend/header.tsx` — Now dynamic: reads session via `getSession()`, fetches settings via `getSettings()`, renders `header_menu_logged_in` if authenticated else `header_menu_logged_out`. Menu items rendered as `<a>` links.
-- [ ] Update `src/components/frontend/footer.tsx` — Now dynamic: fetches `footer_content` from settings, renders via `dangerouslySetInnerHTML`.
+- [x] Create `src/app/page.tsx` — Home page Server Component: calls `getSettings()` → reads `home_page` slug → fetches `Page` by slug → renders title + content (dangerouslySetInnerHTML for content). If no home page set, show a default landing page. Export `generateMetadata()` for SEO.
+- [x] Create `src/app/[slug]/page.tsx` — Dynamic CMS page Server Component: fetches `Page` by slug → if not found, calls `notFound()` → renders title + content (dangerouslySetInnerHTML). Export `generateMetadata()` with page title + description (first 160 chars of stripped content).
+- [x] Update `src/components/frontend/header.tsx` — Now dynamic: reads session via `getSession()`, fetches settings via `getCachedSettings()`, renders `header_menu_logged_in` if authenticated else `header_menu_logged_out`. Menu items rendered as `<a>` links.
+- [x] Update `src/components/frontend/footer.tsx` — Now dynamic: fetches `footer_content` from settings, renders via `dangerouslySetInnerHTML`.
 
 ### Phase 2 Verification Checklist
 
-- [ ] Every file has JSDoc/file-level comments
-- [ ] Profile edit, password change, email change (with re-verification), account deletion all work end-to-end
-- [ ] Admin user list: search finds users, pagination works, create/edit/delete function correctly
-- [ ] Cannot delete Super Admin user
-- [ ] Admin page list: search finds pages, pagination works, create/edit/delete function correctly
-- [ ] Cannot delete page set as home_page
-- [ ] Slug auto-generation works and handles collisions
-- [ ] Settings page saves and loads correctly for all fields
-- [ ] Home page renders content from the selected CMS page
-- [ ] `/[slug]` renders correct page content and 404 for missing slugs
-- [ ] Header shows correct menu variant based on auth state
-- [ ] Footer renders HTML from settings
-- [ ] SEO metadata renders on home page and `/[slug]` pages
+- [x] Every file has JSDoc/file-level comments
+- [x] Profile edit, password change, email change (with re-verification), account deletion all work end-to-end
+- [x] Admin user list: search finds users, pagination works, create/edit/delete function correctly
+- [x] Cannot delete Super Admin user
+- [x] Admin page list: search finds pages, pagination works, create/edit/delete function correctly
+- [x] Cannot delete page set as home_page
+- [x] Slug auto-generation works and handles collisions
+- [x] Settings page saves and loads correctly for all fields
+- [x] Home page renders content from the selected CMS page
+- [x] `/[slug]` renders correct page content and 404 for missing slugs
+- [x] Header shows correct menu variant based on auth state
+- [x] Footer renders HTML from settings
+- [x] SEO metadata renders on home page and `/[slug]` pages
 
 ---
 
@@ -241,8 +241,8 @@
 
 ### 3.1 — Group Validators & Actions
 
-- [ ] Create `src/lib/validators/group.ts` — `createGroupSchema`, `updateGroupSchema` — all fields use `.describe()`
-- [ ] Create `src/lib/actions/admin/groups.ts` — Server Actions:
+- [x] Create `src/lib/validators/group.ts` — `createGroupSchema`, `updateGroupSchema` — all fields use `.describe()`
+- [x] Create `src/lib/actions/admin/groups.ts` — Server Actions:
   - `getGroups()` — returns all groups with user count. Auth: super_admin.
   - `createGroup(formData)` — creates group with name, type, routePermissions. Auth: super_admin.
   - `updateGroup(id, formData)` — updates group. If permissions changed, increments `permissionVersion` (invalidates sessions for all users in group). Prevents changing own group's type or permissions to avoid lockout. Auth: super_admin.
@@ -250,31 +250,31 @@
 
 ### 3.2 — Group CRUD Pages
 
-- [ ] Create `src/app/admin/groups/page.tsx` — Group list table: name, type, user count, permission count, actions. Super Admin only.
-- [ ] Create `src/app/admin/groups/create/page.tsx` — Create group form: name input, type dropdown (admin/regular), route permissions checkbox list (predefined routes: /admin/users, /admin/pages, /admin/settings, /admin/groups). Super Admin only.
-- [ ] Create `src/app/admin/groups/[id]/edit/page.tsx` — Edit group form: same fields. Disable type/permissions editing if this is the Super Admin's own group. Super Admin only.
+- [x] Create `src/app/admin/groups/page.tsx` — Group list table: name, type, user count, permission count, actions. Super Admin only.
+- [x] Create `src/app/admin/groups/create/page.tsx` — Create group form: name input, type dropdown (admin/regular), route permissions checkbox list (predefined routes: /admin/users, /admin/pages, /admin/settings, /admin/groups). Super Admin only.
+- [x] Create `src/app/admin/groups/[id]/edit/page.tsx` — Edit group form: same fields. Disable type/permissions editing if this is the Super Admin's own group. Super Admin only.
 
 ### 3.3 — Permission Infrastructure
 
-- [ ] Update `src/components/admin/sidebar.tsx` — Now filters visible menu items based on `routePermissions` from session. Super Admin sees all items. Hide Groups link from non-super-admin users.
-- [ ] Create `src/components/admin/permission-guard.tsx` — Conditional rendering wrapper. Props: `requiredPermission: AuthCheck`. Calls `authorize(session, check)`, renders children or null. Used for conditional admin UI elements.
-- [ ] Update `src/app/admin/users/[id]/edit/page.tsx` — Add group assignment dropdown (only visible if user has appropriate permissions)
-- [ ] Verify proxy.ts is already enforcing route-level permissions (built in Phase 1 with `authorize({ type: 'route', path })`). If not fully wired, update now.
-- [ ] Update `src/app/admin/layout.tsx` — After successful admin auth check, also call `updateSession` if `permissionVersion` in session doesn't match DB (stale permission refresh)
+- [x] Update `src/components/admin/sidebar.tsx` — Now filters visible menu items based on `routePermissions` from session. Super Admin sees all items. Hide Groups link from non-super-admin users.
+- [x] Create `src/components/admin/permission-guard.tsx` — Conditional rendering wrapper. Props: `requiredPermission: AuthCheck`. Calls `authorize(session, check)`, renders children or null. Used for conditional admin UI elements.
+- [x] Update `src/app/admin/users/[id]/edit/page.tsx` — Add group assignment dropdown (only visible if user has appropriate permissions)
+- [x] Verify proxy.ts is already enforcing route-level permissions (built in Phase 1 with `authorize({ type: 'route', path })`). If not fully wired, update now.
+- [x] Update `src/app/admin/layout.tsx` — After successful admin auth check, also call `updateSession` if `permissionVersion` in session doesn't match DB (stale permission refresh)
 
 ### Phase 3 Verification Checklist
 
-- [ ] Every file has JSDoc/file-level comments
-- [ ] Super Admin can create, edit, delete groups
-- [ ] Non-super-admin users cannot access `/admin/groups` (redirected by proxy)
-- [ ] Group type and permissions saved correctly
-- [ ] Changing a group's permissions increments `permissionVersion`
-- [ ] Users in group with changed permissions get their session updated on next request
-- [ ] Admin sidebar filters menu items by routePermissions from session
-- [ ] Admin without `/admin/users` permission cannot access user management pages
-- [ ] Cannot change own group's type or permissions
-- [ ] Cannot delete group with assigned users
-- [ ] Cannot delete Super Admin's group
+- [x] Every file has JSDoc/file-level comments
+- [x] Super Admin can create, edit, delete groups
+- [x] Non-super-admin users cannot access `/admin/groups` (redirected by proxy)
+- [x] Group type and permissions saved correctly
+- [x] Changing a group's permissions increments `permissionVersion`
+- [x] Users in group with changed permissions get their session updated on next request
+- [x] Admin sidebar filters menu items by routePermissions from session
+- [x] Admin without `/admin/users` permission cannot access user management pages
+- [x] Cannot change own group's type or permissions
+- [x] Cannot delete group with assigned users
+- [x] Cannot delete Super Admin's group
 
 ---
 
@@ -284,25 +284,25 @@
 
 ### 4.1 — SEO
 
-- [ ] Verify `generateMetadata()` on `src/app/page.tsx` and `src/app/[slug]/page.tsx` (should already exist from Phase 2). Enhance with OpenGraph and Twitter card metadata.
-- [ ] Add `generateMetadata()` to `src/app/layout.tsx` with default title, description, and site URL from settings.
-- [ ] Create `src/app/sitemap.ts` — generates sitemap XML: includes `/`, all published pages from DB, and static routes (`/login`, `/signup`). Uses `NEXT_PUBLIC_SITE_URL`.
-- [ ] Create `public/robots.txt` — allows all crawlers, points to sitemap
+- [x] Verify `generateMetadata()` on `src/app/page.tsx` and `src/app/[slug]/page.tsx` (should already exist from Phase 2). Enhance with OpenGraph and Twitter card metadata.
+- [x] Add `generateMetadata()` to `src/app/layout.tsx` with default title, description, and site URL from settings.
+- [x] Create `src/app/sitemap.ts` — generates sitemap XML: includes `/`, all published pages from DB, and static routes (`/login`, `/signup`). Uses `NEXT_PUBLIC_SITE_URL`.
+- [x] Create `public/robots.txt` — allows all crawlers, points to sitemap
 
 ### 4.2 — Error Handling
 
-- [ ] Create `src/app/error.tsx` — Global error boundary with "Something went wrong" message and retry button
-- [ ] Create `src/app/not-found.tsx` — Custom 404 page with link back to home
-- [ ] Create `src/app/loading.tsx` — Global loading skeleton
-- [ ] Create `src/app/account/error.tsx` — Account area error boundary
-- [ ] Create `src/app/account/loading.tsx` — Account area loading skeleton
-- [ ] Create `src/app/admin/error.tsx` — Admin area error boundary
-- [ ] Create `src/app/admin/loading.tsx` — Admin area loading skeleton
-- [ ] Inline form validation errors: ensure every form field shows Zod validation errors next to the input. Create a `FormField` wrapper or pattern for consistent error display.
+- [x] Create `src/app/error.tsx` — Global error boundary with "Something went wrong" message and retry button
+- [x] Create `src/app/not-found.tsx` — Custom 404 page with link back to home
+- [x] Create `src/app/loading.tsx` — Global loading skeleton
+- [x] Create `src/app/account/error.tsx` — Account area error boundary
+- [x] Create `src/app/account/loading.tsx` — Account area loading skeleton
+- [x] Create `src/app/admin/error.tsx` — Admin area error boundary
+- [x] Create `src/app/admin/loading.tsx` — Admin area loading skeleton
+- [x] Inline form validation errors: ensure every form field shows Zod validation errors next to the input. Create a `FormField` wrapper or pattern for consistent error display.
 
 ### 4.3 — Notification System
 
-- [ ] Create a toast notification system using flash cookies (survives redirects in Server Actions):
+- [x] Create a toast notification system using flash cookies (survives redirects in Server Actions):
   - Create `src/lib/flash.ts` — `setFlash(message)`, `getFlash()` — stores flash messages in a short-lived cookie (maxAge: 60s, path: /)
   - Create `src/components/shared/toast.tsx` — Reads flash cookie, displays message with type styling, clears cookie
   - Add `<Toast />` to root layout
@@ -310,67 +310,67 @@
 
 ### 4.4 — Responsive Design
 
-- [ ] Admin sidebar: collapses to hamburger menu on mobile (max-width: 768px). Toggle via state. Sidebar overlays content on mobile.
-- [ ] Tables: add `overflow-x-auto` wrapper for horizontal scroll on small screens
-- [ ] Forms: ensure all form inputs are full-width on mobile viewports
-- [ ] Header: responsive navigation (hamburger menu on mobile for header menu items)
+- [x] Admin sidebar: collapses to hamburger menu on mobile (max-width: 768px). Toggle via state. Sidebar overlays content on mobile.
+- [x] Tables: add `overflow-x-auto` wrapper for horizontal scroll on small screens
+- [x] Forms: ensure all form inputs are full-width on mobile viewports
+- [x] Header: responsive navigation (hamburger menu on mobile for header menu items)
 
 ### 4.5 — Security Hardening
 
-- [ ] Add security headers in `next.config.ts`:
+- [x] Add security headers in `next.config.ts`:
   - `Content-Security-Policy` — default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'
   - `Strict-Transport-Security` — max-age=63072000; includeSubDomains; preload
   - `X-Content-Type-Options` — nosniff
   - `X-Frame-Options` — DENY
   - `Referrer-Policy` — strict-origin-when-cross-origin
-- [ ] Verify session cookie configuration: httpOnly, secure (production), sameSite=lax, path=/, maxAge matches JWE expiration
-- [ ] Prisma connection error handling: ensure `lib/prisma.ts` singleton handles connection failures gracefully (log error, provide clear message, retry logic)
-- [ ] Email sending: wrap `nodemailer.sendMail()` in try-catch, log error server-side, return user-friendly message
-- [ ] Token cleanup: call `cleanupExpiredTokens()` at startup AND via `setInterval` every 60 minutes
-- [ ] Document HTML trust boundary: add comment in page rendering code noting that admin-authored HTML/content is trusted and rendered via `dangerouslySetInnerHTML`
-- [ ] Input sanitization: ensure Zod schemas trim strings and reject overly long inputs where appropriate
+- [x] Verify session cookie configuration: httpOnly, secure (production), sameSite=lax, path=/, maxAge matches JWE expiration
+- [x] Prisma connection error handling: ensure `lib/prisma.ts` singleton handles connection failures gracefully (log error, provide clear message, retry logic)
+- [x] Email sending: wrap `nodemailer.sendMail()` in try-catch, log error server-side, return user-friendly message
+- [x] Token cleanup: call `cleanupExpiredTokens()` at startup AND via `setInterval` every 60 minutes
+- [x] Document HTML trust boundary: add comment in page rendering code noting that admin-authored HTML/content is trusted and rendered via `dangerouslySetInnerHTML`
+- [x] Input sanitization: ensure Zod schemas trim strings and reject overly long inputs where appropriate
 
 ### 4.6 — Final Cleanup
 
-- [ ] Remove all placeholder/boilerplate code from initial Next.js scaffold
-- [ ] Ensure no `console.log` statements remain (use structured `console.error` for actual errors)
-- [ ] Verify all imports use `@/` path alias
-- [ ] Create `.env.example` file documenting all required environment variables with descriptions
-- [ ] Verify `README.md` has clear setup instructions (database setup, env vars, seed, dev server)
-- [ ] Final JSDoc pass: ensure every file has file-level comment, every exported function has full JSDoc
+- [x] Remove all placeholder/boilerplate code from initial Next.js scaffold
+- [x] Ensure no `console.log` statements remain (use structured `console.error` for actual errors)
+- [x] Verify all imports use `@/` path alias
+- [x] Create `.env.example` file documenting all required environment variables with descriptions
+- [x] Verify `README.md` has clear setup instructions (database setup, env vars, seed, dev server)
+- [x] Final JSDoc pass: ensure every file has file-level comment, every exported function has full JSDoc
 
 ### Phase 4 Verification Checklist
 
-- [ ] Every file has JSDoc/file-level comments
-- [ ] Full manual flow test: signup → verify email → login → edit profile → change password → logout → login admin → CRUD users → CRUD pages → edit settings → manage groups → logout → view public pages
-- [ ] SEO: view source on public pages shows correct title, description, og:tags
-- [ ] `GET /sitemap.xml` returns valid XML
-- [ ] `GET /robots.txt` returns correct content
-- [ ] 404 page renders for non-existent routes
-- [ ] Error boundaries display gracefully when errors occur
-- [ ] Loading skeletons appear during navigation
-- [ ] Form validation errors display inline next to fields
-- [ ] Toast notifications appear and auto-dismiss
-- [ ] Responsive: test all pages at 375px, 768px, 1024px widths
-- [ ] Security headers present in all responses
-- [ ] Rate limiting blocks repeated login attempts
-- [ ] Session invalidation works for all trigger events
+- [x] Every file has JSDoc/file-level comments
+- [x] Full manual flow test: signup → verify email → login → edit profile → change password → logout → login admin → CRUD users → CRUD pages → edit settings → manage groups → logout → view public pages
+- [x] SEO: view source on public pages shows correct title, description, og:tags
+- [x] `GET /sitemap.xml` returns valid XML
+- [x] `GET /robots.txt` returns correct content
+- [x] 404 page renders for non-existent routes
+- [x] Error boundaries display gracefully when errors occur
+- [x] Loading skeletons appear during navigation
+- [x] Form validation errors display inline next to fields
+- [x] Toast notifications appear and auto-dismiss
+- [x] Responsive: test all pages at 375px, 768px, 1024px widths
+- [x] Security headers present in all responses
+- [x] Rate limiting blocks repeated login attempts
+- [x] Session invalidation works for all trigger events
 
 ---
 
 ## Final Delivery Checklist
 
-- [ ] All 4 phases complete, all verification checks passed
-- [ ] Every file has `/** @fileoverview ... */` or equivalent JSDoc file-level comment
-- [ ] All exported functions have JSDoc (purpose, parameters, return type)
-- [ ] Inline comments explain non-obvious logic (edge cases, why a check exists)
-- [ ] Zod schemas use `.describe()` on every field
-- [ ] Server Actions document required authorization level in JSDoc
-- [ ] Prisma schema has `///` comments on each model and non-obvious field
-- [ ] `.env.example` file exists with all variables and descriptions
-- [ ] `README.md` has setup instructions (clone, install, env vars, database, migrate, seed, dev)
-- [ ] No dead code, no `console.log`, no commented-out code blocks
-- [ ] All imports use `@/` path alias
+- [x] All 4 phases complete, all verification checks passed
+- [x] Every file has `/** @fileoverview ... */` or equivalent JSDoc file-level comment
+- [x] All exported functions have JSDoc (purpose, parameters, return type)
+- [x] Inline comments explain non-obvious logic (edge cases, why a check exists)
+- [x] Zod schemas use `.describe()` on every field
+- [x] Server Actions document required authorization level in JSDoc
+- [x] Prisma schema has `///` comments on each model and non-obvious field
+- [x] `.env.example` file exists with all variables and descriptions
+- [x] `README.md` has setup instructions (clone, install, env vars, database, migrate, seed, dev)
+- [x] No dead code, no `console.log`, no commented-out code blocks
+- [x] All imports use `@/` path alias
 
 ---
 

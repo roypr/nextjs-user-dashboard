@@ -18,6 +18,8 @@ model UserGroup {
   type             String   @default("regular") @map("type")
   /// Route permission patterns for admin-type groups (e.g., ["/admin/users", "/admin/pages"])
   routePermissions String[] @default([]) @map("route_permissions")
+  /// Version counter incremented when permissions change — used for session invalidation
+  permissionVersion Int     @default(0) @map("permission_version")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
