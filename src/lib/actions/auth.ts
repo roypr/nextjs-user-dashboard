@@ -45,6 +45,7 @@ import {
   resendVerificationSchema,
 } from "@/lib/validators/auth";
 import { getClientIP } from "@/lib/utils/ip";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 /**
  * Validates email/password format and creates a new user account.
@@ -195,11 +196,16 @@ export async function login(
     } else {
       redirect("/account/dashboard");
     }
+    
   } catch (error) {
     // If redirect was thrown, re-throw it (Next.js redirects use special errors)
-    if (error instanceof Error && error.message.includes("redirect")) {
+    if (
+      isRedirectError(error) ||
+      (error instanceof Error && error.message.toLowerCase().includes("redirect"))
+    ) {
       throw error;
     }
+
     console.error("Login error:", error);
     return { error: "An unexpected error occurred. Please try again." };
   }
