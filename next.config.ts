@@ -14,8 +14,17 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value:
-              "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+            value:`
+              default-src 'self';
+              script-src 'self' 'unsafe-inline' 'unsafe-eval';
+              style-src 'self' 'unsafe-inline';
+              `.replace(/\n/g, ""),
+
+              // `
+              // default-src 'self';
+              // script-src 'self' 'unsafe-inline';
+              // style-src 'self' 'unsafe-inline';
+              // `.replace(/\n/g, ""),
           },
           {
             key: "Strict-Transport-Security",
