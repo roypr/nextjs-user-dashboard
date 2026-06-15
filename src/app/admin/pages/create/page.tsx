@@ -2,6 +2,7 @@
  * @fileoverview Create page for admin CMS.
  * Form with title input (slug auto-generated and displayed below),
  * and content HTML textarea. Uses useActionState with the createPage action.
+ * Styled with warm-professional design system.
  */
 
 "use client";
@@ -22,48 +23,49 @@ export default function CreatePagePage() {
   const autoSlug = title ? slugify(title) : "";
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Create Page</h1>
+    <div className="mx-auto max-w-3xl animate-slide-up">
+      <h1 className="page-heading mb-8">Create Page</h1>
 
-      {state?.success && <Alert type="success" message={state.success} />}
-      {state?.error && <Alert type="error" message={state.error} />}
+      {state?.success && <div className="mb-4"><Alert type="success" message={state.success} /></div>}
+      {state?.error && <div className="mb-4"><Alert type="error" message={state.error} /></div>}
 
-      <form action={formAction} className="space-y-4">
-        <Input
-          label="Title"
-          name="title"
-          type="text"
-          required
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-
-        {autoSlug && (
-          <div className="mb-4 text-sm text-gray-500">
-            <span className="font-medium">Slug:</span> /{autoSlug}
-            <input type="hidden" name="slug" value={autoSlug} />
-          </div>
-        )}
-
-        <div className="mb-4">
-          <label
-            htmlFor="content"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Content (HTML)
-          </label>
-          <textarea
-            id="content"
-            name="content"
-            rows={15}
-            className="block w-full rounded border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+      <div className="card-lg p-6">
+        <form action={formAction} className="space-y-5">
+          <Input
+            label="Title"
+            name="title"
+            type="text"
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
-        </div>
 
-        <Button type="submit" loading={pending}>
-          Create Page
-        </Button>
-      </form>
+          {autoSlug && (
+            <div className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3 text-sm">
+              <span className="font-medium text-[var(--text-primary)]">Slug:</span>{" "}
+              <span className="text-[var(--text-secondary)]">/{autoSlug}</span>
+              <input type="hidden" name="slug" value={autoSlug} />
+            </div>
+          )}
+
+          <div className="mb-4">
+            <label htmlFor="content" className="label-base">
+              Content (HTML)
+            </label>
+            <textarea
+              id="content"
+              name="content"
+              rows={15}
+              className="input-base font-mono text-xs"
+              placeholder="<h1>Hello World</h1>"
+            />
+          </div>
+
+          <Button type="submit" loading={pending}>
+            Create Page
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

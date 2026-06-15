@@ -1,6 +1,6 @@
 /**
  * @fileoverview Reset password page.
- * Reads the token from searchParams and shows a new password form.
+ * Reads the token from searchParams and shows a new password form in a card.
  * Uses useActionState with the resetPassword Server Action.
  */
 
@@ -25,21 +25,24 @@ function ResetPasswordForm() {
   const [state, formAction, pending] = useActionState(resetPassword, undefined);
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">
-          Set New Password
-        </h1>
+    <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
+      <div className="card-lg w-full max-w-sm animate-slide-up p-8">
+        <div className="mb-8 text-center">
+          <h1 className="page-heading mb-1">Set New Password</h1>
+          <p className="text-sm text-[var(--text-secondary)]">
+            Enter your new password below.
+          </p>
+        </div>
 
-        {state?.success && <Alert type="success" message={state.success} />}
-        {state?.error && <Alert type="error" message={state.error} />}
+        {state?.success && <div className="mb-4"><Alert type="success" message={state.success} /></div>}
+        {state?.error && <div className="mb-4"><Alert type="error" message={state.error} /></div>}
 
         {!token && (
           <Alert type="error" message="Missing reset token. Please use the link from your email." />
         )}
 
         {token && !state?.success && (
-          <form action={formAction} className="space-y-4">
+          <form action={formAction} className="space-y-5">
             <input type="hidden" name="token" value={token} />
             <Input
               label="New Password"
@@ -61,20 +64,22 @@ function ResetPasswordForm() {
           </form>
         )}
 
-        {!state?.success && (
-          <p className="mt-4 text-center text-sm text-gray-600">
-            <Link href="/login" className="text-blue-600 hover:text-blue-500">
-              Back to sign in
-            </Link>
-          </p>
-        )}
-        {state?.success && (
-          <p className="mt-4 text-center text-sm text-gray-600">
-            <Link href="/login" className="text-blue-600 hover:text-blue-500">
-              Sign in with your new password
-            </Link>
-          </p>
-        )}
+        <div className="mt-6 text-center">
+          {!state?.success && (
+            <p className="text-sm text-[var(--text-secondary)]">
+              <Link href="/login" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
+                Back to sign in
+              </Link>
+            </p>
+          )}
+          {state?.success && (
+            <p className="text-sm text-[var(--text-secondary)]">
+              <Link href="/login" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
+                Sign in with your new password
+              </Link>
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -85,7 +90,11 @@ function ResetPasswordForm() {
  */
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><p className="text-gray-500">Loading...</p></div>}>
+    <Suspense fallback={
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <div className="text-sm text-[var(--text-muted)]">Loading...</div>
+      </div>
+    }>
       <ResetPasswordForm />
     </Suspense>
   );

@@ -1,6 +1,6 @@
 /**
  * @fileoverview Frontend login page.
- * Displays a login form using useActionState with the login Server Action.
+ * Displays a login form in a centered card using useActionState.
  * If already logged in, shows a message instead of the form.
  */
 
@@ -14,22 +14,25 @@ import Input from "@/components/shared/input";
 import Alert from "@/components/shared/alert";
 
 /**
- * Login page with email and password form.
+ * Login page with email and password form in a card container.
  */
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(login, undefined);
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">
-          Sign In
-        </h1>
+    <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
+      <div className="card-lg w-full max-w-sm animate-slide-up p-8">
+        <div className="mb-8 text-center">
+          <h1 className="page-heading mb-1">Sign In</h1>
+          <p className="text-sm text-[var(--text-secondary)]">
+            Welcome back! Sign in to your account.
+          </p>
+        </div>
 
-        {state?.success && <Alert type="success" message={state.success} />}
-        {state?.error && <Alert type="error" message={state.error} />}
+        {state?.success && <div className="mb-4"><Alert type="success" message={state.success} /></div>}
+        {state?.error && <div className="mb-4"><Alert type="error" message={state.error} /></div>}
 
-        <form action={formAction} className="space-y-4">
+        <form action={formAction} className="space-y-5">
           <Input
             label="Email"
             name="email"
@@ -49,15 +52,12 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-4 text-center text-sm text-gray-600">
-          <Link href="/signup" className="text-blue-600 hover:text-blue-500">
+        <div className="mt-6 text-center text-sm text-[var(--text-secondary)]">
+          <Link href="/signup" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
             Create an account
           </Link>
-          <span className="mx-2">·</span>
-          <Link
-            href="/forgot-password"
-            className="text-blue-600 hover:text-blue-500"
-          >
+          <span className="mx-2 text-[var(--text-muted)]">·</span>
+          <Link href="/forgot-password" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
             Forgot password?
           </Link>
         </div>

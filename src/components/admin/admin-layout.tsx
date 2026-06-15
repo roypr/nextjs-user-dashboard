@@ -2,6 +2,7 @@
  * @fileoverview Admin layout wrapper with sidebar and main content area.
  * Used by the admin route group to wrap all admin pages.
  * The sidebar is responsive — collapses to hamburger menu on mobile.
+ * Content area has warm consistent background with subtle pattern.
  */
 
 import Sidebar from "@/components/admin/sidebar";
@@ -19,10 +20,12 @@ interface AdminLayoutProps {
  */
 export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[var(--bg-page)]">
       <Sidebar />
-      <main className="flex-1 bg-gray-50 p-4 pt-16 md:pt-8 md:p-8">
-        {children}
+      <main className="min-h-screen flex-1 bg-[var(--bg-page)] p-4 pt-16 md:p-8 md:pt-8">
+        <div className="mx-auto max-w-6xl">
+          {children}
+        </div>
       </main>
     </div>
   );

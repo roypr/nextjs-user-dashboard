@@ -1,20 +1,23 @@
 /**
- * @fileoverview Admin root layout — wraps children in AdminLayout, enforces
- * admin authorization, and refreshes session permissions if stale.
- * Redirects non-admin users to /admin/login.
+ * @fileoverview Admin root layout — wraps children in AdminLayout and refreshes
+ * session permissions if stale.
+ *
+ * IMPORTANT: Auth enforcement for /admin/* routes is handled by proxy.ts
+ * (middleware), which allows /admin/login through unprotected and redirects
+ * unauthenticated users for all other admin routes. This layout does NOT
+ * duplicate that check — it only refreshes stale permission versions for
+ * already-authenticated sessions.
  */
 
-import { redirect } from "next/navigation";
 import { getSession, updateSession } from "@/lib/auth/session";
-import { authorize } from "@/lib/auth/authorize";
 import { getCachedPermissionVersion } from "@/lib/auth/session-cache";
 import AdminLayout from "@/components/admin/admin-layout";
 
 /**
- * Admin layout with authorization check and stale permission refresh.
+ * Admin layout with stale permission refresh.
  * If the session's permissionVersion doesn't match the DB (within cache window),
  * updates the session with fresh permissions.
- * Redirects unauthorized users to /admin/login.
+ * Auth enforcement is handled by the proxy.ts middleware.
  */
 export default async function AdminRootLayout({
   children,
@@ -23,24 +26,17 @@ export default async function AdminRootLayout({
 }) {
   const session = await getSession();
 
-  if (!authorize(session, { type: "admin" })) {
-    redirect("/admin/login");
-  }
-
-  // Session is guaranteed non-null here since authorize returned true
-  const currentSession = session!;
-
-  // Check for stale permissionVersion — if mismatch, update session
-  if (currentSession.groupId) {
+  // Only refresh permissions if we have a valid session
+  if (session?.groupId) {
     try {
       const cachedPermissionVersion = await getCachedPermissionVersion(
-        currentSession.groupId,
+        session.groupId,
       );
-      if (cachedPermissionVersion !== currentSession.permissionVersion) {
+      if (cachedPermissionVersion !== session.permissionVersion) {
         // Permission version changed — fetch fresh data and update session
         const prisma = (await import("@/lib/prisma")).default;
         const freshGroup = await prisma.userGroup.findUnique({
-          where: { id: currentSession.groupId },
+          where: { id: session.groupId },
           select: {
             type: true,
             routePermissions: true,

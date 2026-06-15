@@ -1,6 +1,7 @@
 /**
  * @fileoverview Reusable Input component with label and error message display.
- * Wraps a native HTML input with Tailwind styling and optional error state.
+ * Wraps a native HTML input with consistent warm-professional styling.
+ * Smooth box-shadow transition for focus state — not just color.
  */
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -31,23 +32,23 @@ export default function Input({
     <div className="mb-4">
       <label
         htmlFor={inputId}
-        className="mb-1 block text-sm font-medium text-gray-700"
+        className="label-base"
       >
         {label}
       </label>
       <input
         id={inputId}
-        className={`block w-full rounded border px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        className={`input-base ${
           error
-            ? "border-red-300 focus:border-red-500"
-            : "border-gray-300 focus:border-blue-500"
+            ? "!border-[var(--error)] !shadow-[0_0_0_1px_var(--error)]"
+            : ""
         } ${className}`}
         aria-invalid={error ? "true" : "false"}
         aria-describedby={error ? `${inputId}-error` : undefined}
         {...rest}
       />
       {error && (
-        <p id={`${inputId}-error`} className="mt-1 text-sm text-red-600" role="alert">
+        <p id={`${inputId}-error`} className="mt-1.5 text-sm text-[var(--error)]" role="alert">
           {error}
         </p>
       )}

@@ -125,7 +125,12 @@ export async function proxy(request: NextRequest) {
 
     // Check route-specific permissions
     if (!authorize(session, { type: "route", path: pathname })) {
-      // No permission for this route — redirect to admin dashboard
+      // No permission for this route.
+      // If already on the admin dashboard, redirect to login to avoid a self-loop.
+      if (pathname === "/admin/dashboard") {
+        return NextResponse.redirect(new URL("/admin/login", request.url));
+      }
+      // Otherwise redirect to admin dashboard
       return NextResponse.redirect(new URL("/admin/dashboard", request.url));
     }
 

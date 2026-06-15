@@ -1,6 +1,6 @@
 /**
  * @fileoverview Frontend signup page.
- * Registration form with email and password fields.
+ * Registration form in a centered card with email and password fields.
  * Uses useActionState with the signup Server Action.
  */
 
@@ -14,22 +14,25 @@ import Input from "@/components/shared/input";
 import Alert from "@/components/shared/alert";
 
 /**
- * Signup page with email and password registration form.
+ * Signup page with email and password registration form in a card.
  */
 export default function SignupPage() {
   const [state, formAction, pending] = useActionState(signup, undefined);
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">
-          Create Account
-        </h1>
+    <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
+      <div className="card-lg w-full max-w-sm animate-slide-up p-8">
+        <div className="mb-8 text-center">
+          <h1 className="page-heading mb-1">Create Account</h1>
+          <p className="text-sm text-[var(--text-secondary)]">
+            Get started with your free account.
+          </p>
+        </div>
 
-        {state?.success && <Alert type="success" message={state.success} />}
-        {state?.error && <Alert type="error" message={state.error} />}
+        {state?.success && <div className="mb-4"><Alert type="success" message={state.success} /></div>}
+        {state?.error && <div className="mb-4"><Alert type="error" message={state.error} /></div>}
 
-        <form action={formAction} className="space-y-4">
+        <form action={formAction} className="space-y-5">
           <Input
             label="Email"
             name="email"
@@ -49,9 +52,9 @@ export default function SignupPage() {
           </Button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-[var(--text-secondary)]">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:text-blue-500">
+          <Link href="/login" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
             Sign in
           </Link>
         </p>

@@ -31,11 +31,6 @@ interface FormFieldProps {
  * @param props.description - Optional helper text.
  * @param props.children - The form control element.
  * @param props.required - Whether to show a required indicator.
- *
- * @example
- * <FormField label="Email" id="email" error={state?.errors?.email}>
- *   <input id="email" name="email" type="email" />
- * </FormField>
  */
 export default function FormField({
   label,
@@ -49,17 +44,17 @@ export default function FormField({
     <div className="mb-4">
       <label
         htmlFor={id}
-        className="mb-1 block text-sm font-medium text-gray-700"
+        className="label-base"
       >
         {label}
-        {required && <span className="ml-1 text-red-500">*</span>}
+        {required && <span className="ml-1 text-[var(--error)]">*</span>}
       </label>
       {children}
       {description && (
-        <p className="mt-1 text-xs text-gray-500">{description}</p>
+        <p className="mt-1.5 text-xs text-[var(--text-secondary)]">{description}</p>
       )}
       {error && (
-        <p id={`${id}-error`} className="mt-1 text-sm text-red-600" role="alert">
+        <p id={`${id}-error`} className="mt-1.5 text-sm text-[var(--error)]" role="alert">
           {error}
         </p>
       )}

@@ -1,6 +1,7 @@
 /**
  * @fileoverview Delete confirmation modal using the native <dialog> element.
  * Provides a reusable confirmation prompt with optional loading state.
+ * Styled with the warm-professional design system.
  */
 
 "use client";
@@ -79,15 +80,14 @@ export default function ConfirmDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="rounded-lg border border-gray-200 p-0 shadow-lg backdrop:bg-black/40"
+      className="animate-scale-in rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-0 shadow-lg backdrop:bg-black/50"
       onClick={(e) => {
-        // Close if user clicks on the backdrop
         if (e.target === dialogRef.current) onCancel();
       }}
     >
       <div className="p-6">
-        <h2 className="mb-2 text-lg font-semibold text-gray-900">{title}</h2>
-        <p className="mb-6 text-sm text-gray-600">{message}</p>
+        <h2 className="mb-2 text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
+        <p className="mb-6 text-sm text-[var(--text-secondary)]">{message}</p>
         <div className="flex justify-end gap-3">
           <Button
             variant="secondary"

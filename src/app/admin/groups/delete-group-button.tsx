@@ -17,7 +17,6 @@ interface DeleteGroupButtonProps {
 
 /**
  * Delete group button with confirmation dialog.
- * Shows a confirm dialog before submitting the delete action.
  */
 export default function DeleteGroupButton({
   groupId,
@@ -47,10 +46,10 @@ export default function DeleteGroupButton({
         type="button"
         onClick={() => setShowConfirm(true)}
         disabled={!isDeletable}
-        className={`text-sm font-medium ${
+        className={`text-sm font-medium transition-colors ${
           isDeletable
-            ? "text-red-600 hover:text-red-500"
-            : "cursor-not-allowed text-gray-400"
+            ? "text-[var(--error)] hover:text-[#b91c1c]"
+            : "cursor-not-allowed text-[var(--text-muted)]"
         }`}
         title={
           !isDeletable
@@ -61,20 +60,22 @@ export default function DeleteGroupButton({
         Delete
       </button>
 
-      {showConfirm && (
-        <ConfirmDialog
-          open={showConfirm}
-          title="Delete Group"
-          message={`Are you sure you want to delete the group "${groupName}"? This action cannot be undone.`}
-          confirmLabel="Delete"
-          loading={loading}
-          onConfirm={handleConfirm}
-          onCancel={() => setShowConfirm(false)}
-        />
-      )}
+      <ConfirmDialog
+        open={showConfirm}
+        title={`Delete "${groupName}"`}
+        message={`Are you sure you want to delete the "${groupName}" group? This action cannot be undone.`}
+        confirmLabel="Delete Group"
+        loading={loading}
+        onConfirm={handleConfirm}
+        onCancel={() => setShowConfirm(false)}
+      />
 
       {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
+        <div className="mb-4">
+          <div className="animate-fade-in rounded-lg border border-[var(--error)]/30 bg-[var(--error-bg)] px-4 py-3 text-sm font-medium text-[var(--error)]">
+            {error}
+          </div>
+        </div>
       )}
     </>
   );

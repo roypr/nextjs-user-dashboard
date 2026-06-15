@@ -1,7 +1,7 @@
 /**
  * @fileoverview Email verification page.
  * Reads the token from searchParams and calls verifyEmail on mount.
- * Shows success or error message.
+ * Shows success or error message in a centered card.
  */
 
 "use client";
@@ -21,7 +21,6 @@ function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
-  // Create a form data object and pass it to verifyEmail
   const [state, formAction, pending] = useActionState(verifyEmail, undefined);
 
   useEffect(() => {
@@ -33,44 +32,38 @@ function VerifyEmailForm() {
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-sm text-center">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900">
-          Email Verification
-        </h1>
+    <div className="flex min-h-[70vh] items-center justify-center px-4">
+      <div className="card-lg w-full max-w-sm animate-slide-up p-8 text-center">
+        <h1 className="page-heading mb-6">Email Verification</h1>
 
-        {pending && <LoadingSpinner size="lg" />}
+        {pending && <LoadingSpinner size="lg" className="py-8" />}
 
         {!token && !pending && (
           <Alert type="error" message="Missing verification token." />
         )}
 
         {state?.success && (
-          <>
+          <div className="space-y-4">
             <Alert type="success" message={state.success} />
-            <p className="mt-4">
-              <Link
-                href="/login"
-                className="text-blue-600 hover:text-blue-500"
-              >
-                Sign in to your account
-              </Link>
-            </p>
-          </>
+            <Link
+              href="/login"
+              className="inline-block text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]"
+            >
+              Sign in to your account →
+            </Link>
+          </div>
         )}
 
         {state?.error && (
-          <>
+          <div className="space-y-4">
             <Alert type="error" message={state.error} />
-            <p className="mt-4">
-              <Link
-                href="/resend-verification"
-                className="text-blue-600 hover:text-blue-500"
-              >
-                Resend verification email
-              </Link>
-            </p>
-          </>
+            <Link
+              href="/resend-verification"
+              className="inline-block text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]"
+            >
+              Resend verification email →
+            </Link>
+          </div>
         )}
       </div>
     </div>
@@ -78,11 +71,15 @@ function VerifyEmailForm() {
 }
 
 /**
- * Verify email page with Suspense boundary for useSearchParams.
+ * Email verification page with Suspense boundary.
  */
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><LoadingSpinner size="lg" /></div>}>
+    <Suspense fallback={
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    }>
       <VerifyEmailForm />
     </Suspense>
   );

@@ -1,6 +1,8 @@
 /**
  * @fileoverview Client-side edit page form component.
  * Handles the form state and submission for updating a CMS page.
+ * Includes delete functionality with confirmation dialog.
+ * Styled with warm-professional design system.
  */
 
 "use client";
@@ -49,65 +51,63 @@ export default function EditPageForm({ page }: EditPageFormProps) {
       setDeleteError(result.error);
       setShowDelete(false);
     } else {
-      // Redirect to pages list on success
       window.location.href = "/admin/pages";
     }
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Edit Page</h1>
+    <div className="mx-auto max-w-3xl animate-slide-up">
+      <h1 className="page-heading mb-8">Edit Page</h1>
 
-      {state?.success && <Alert type="success" message={state.success} />}
-      {state?.error && <Alert type="error" message={state.error} />}
-      {deleteError && <Alert type="error" message={deleteError} />}
+      {state?.success && <div className="mb-4"><Alert type="success" message={state.success} /></div>}
+      {state?.error && <div className="mb-4"><Alert type="error" message={state.error} /></div>}
+      {deleteError && <div className="mb-4"><Alert type="error" message={deleteError} /></div>}
 
-      <form action={formAction} className="space-y-4">
-        <Input
-          label="Title"
-          name="title"
-          type="text"
-          required
-          defaultValue={page.title}
-        />
-
-        <Input
-          label="Slug"
-          name="slug"
-          type="text"
-          required
-          defaultValue={page.slug}
-        />
-
-        <div className="mb-4">
-          <label
-            htmlFor="content"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Content (HTML)
-          </label>
-          <textarea
-            id="content"
-            name="content"
-            rows={15}
-            defaultValue={page.content}
-            className="block w-full rounded border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+      <div className="card-lg p-6">
+        <form action={formAction} className="space-y-5">
+          <Input
+            label="Title"
+            name="title"
+            type="text"
+            required
+            defaultValue={page.title}
           />
-        </div>
 
-        <div className="flex items-center justify-between">
-          <Button type="submit" loading={pending}>
-            Save Changes
-          </Button>
-          <Button
-            type="button"
-            variant="danger"
-            onClick={() => setShowDelete(true)}
-          >
-            Delete Page
-          </Button>
-        </div>
-      </form>
+          <Input
+            label="Slug"
+            name="slug"
+            type="text"
+            required
+            defaultValue={page.slug}
+          />
+
+          <div className="mb-4">
+            <label htmlFor="content" className="label-base">
+              Content (HTML)
+            </label>
+            <textarea
+              id="content"
+              name="content"
+              rows={15}
+              defaultValue={page.content}
+              className="input-base font-mono text-xs"
+            />
+          </div>
+
+          <div className="flex items-center justify-between border-t border-[var(--border-light)] pt-6">
+            <Button type="submit" loading={pending}>
+              Save Changes
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => setShowDelete(true)}
+            >
+              Delete Page
+            </Button>
+          </div>
+        </form>
+      </div>
 
       <ConfirmDialog
         open={showDelete}

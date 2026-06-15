@@ -1,6 +1,7 @@
 /**
- * @fileoverview Simple search input component with text input and submit button.
- * Wraps in a <form> that submits via query params (no debounce for MVP).
+ * @fileoverview Search input component with text input and submit button.
+ * Wraps in a <form> that submits via query params.
+ * Styled consistently with the design system.
  */
 
 interface SearchInputProps {
@@ -16,8 +17,6 @@ interface SearchInputProps {
 
 /**
  * Search form component that submits via query params.
- * Wraps the input and submit button in a <form> element.
- *
  * @param props.placeholder - Input placeholder text.
  * @param props.defaultValue - Current search value.
  * @param props.paramName - Query parameter name (default: "search").
@@ -36,12 +35,15 @@ export default function SearchInput({
         name={paramName}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="block w-full max-w-xs rounded border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="input-base max-w-xs"
       />
       <button
         type="submit"
-        className="inline-flex items-center rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+        className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-[var(--accent-hover)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
       >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
         Search
       </button>
     </form>

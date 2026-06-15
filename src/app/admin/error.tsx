@@ -1,7 +1,7 @@
 /**
  * @fileoverview Admin area error boundary.
  * Rendered when an unhandled error occurs in the admin route group.
- * Shows a message with a retry button and a link back to the admin dashboard.
+ * Shows a card with a retry button and a link back to the admin dashboard.
  */
 
 "use client";
@@ -10,8 +10,6 @@ import Link from "next/link";
 
 /**
  * Admin area error boundary with retry and navigation options.
- * @param error - The error that was thrown.
- * @param reset - Function to retry rendering the segment.
  */
 export default function AdminError({
   error,
@@ -21,24 +19,27 @@ export default function AdminError({
   reset: () => void;
 }) {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center px-4">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold text-gray-900">
-          Something went wrong
-        </h1>
-        <p className="mb-6 text-gray-600">
+    <div className="flex min-h-[60vh] items-center justify-center px-4">
+      <div className="card-lg w-full max-w-md animate-slide-up p-8 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--error-bg)]">
+          <svg className="h-6 w-6 text-[var(--error)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h1 className="page-heading mb-2">Something went wrong</h1>
+        <p className="mb-6 text-sm text-[var(--text-secondary)]">
           An error occurred in the admin area. Please try again.
         </p>
         <div className="flex items-center justify-center gap-4">
           <button
             onClick={reset}
-            className="rounded bg-blue-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="rounded-lg bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-[var(--accent-hover)] active:scale-[0.97]"
           >
             Try again
           </button>
           <Link
             href="/admin/dashboard"
-            className="rounded bg-gray-200 px-6 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300"
+            className="text-sm font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)]"
           >
             Go to Dashboard
           </Link>

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Account area layout — protected route with sub-navigation.
  * Calls getSession() + authorize(session, { type: 'any' }) and redirects to /login if unauthorized.
- * Renders a sidebar with links to account pages.
+ * Renders a sidebar with links to account pages using warm-professional design.
  */
 
 import { redirect } from "next/navigation";
@@ -40,7 +40,7 @@ export default async function AccountLayout({
             <Link
               key={item.href}
               href={item.href}
-              className="block rounded px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              className="block rounded-lg px-3.5 py-2.5 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
             >
               {item.label}
             </Link>

@@ -2,6 +2,7 @@
  * @fileoverview Dynamic frontend footer component.
  * Reads footer_content from site settings and renders via dangerouslySetInnerHTML.
  * Falls back to default text if settings are unavailable.
+ * Styled with the warm-professional design system.
  */
 
 import { getCachedSettings } from "@/lib/settings-cache";
@@ -23,8 +24,8 @@ export default async function Footer() {
   }
 
   return (
-    <footer className="border-t border-gray-200 bg-gray-50">
-      <div className="mx-auto max-w-7xl px-4 py-6 text-center text-sm text-gray-500 sm:px-6 lg:px-8">
+    <footer className="border-t border-[var(--border)] bg-[var(--bg-card)]">
+      <div className="mx-auto max-w-7xl px-4 py-8 text-center text-sm text-[var(--text-muted)] sm:px-6 lg:px-8">
         {/**
          * HTML trust boundary: Footer content is authored by admins through the
          * settings panel. Admins are trusted users, so rendering HTML via

@@ -2,6 +2,7 @@
  * @fileoverview Client-side hamburger toggle button for the admin sidebar.
  * Visible only on mobile viewports. Toggles the sidebar visibility and
  * overlay backdrop via DOM class manipulation.
+ * Styled to match the dark sidebar theme.
  */
 
 "use client";
@@ -30,24 +31,31 @@ export default function SidebarToggle() {
   }
 
   return (
-    <button
-      onClick={toggleSidebar}
-      className="fixed left-4 top-4 z-50 rounded-md bg-white p-2 shadow-md md:hidden"
-      aria-label="Toggle sidebar menu"
-    >
-      <svg
-        className="h-6 w-6 text-gray-700"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
+    <>
+      <button
+        onClick={toggleSidebar}
+        className="fixed left-4 top-4 z-50 rounded-lg bg-[var(--bg-card)] p-2.5 shadow-md md:hidden"
+        aria-label="Toggle sidebar menu"
       >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
+        <svg
+          className="h-5 w-5 text-[var(--text-primary)]"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
           strokeWidth={2}
-          d="M4 6h16M4 12h16M4 18h16"
-        />
-      </svg>
-    </button>
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
+      <div
+        id="sidebar-overlay"
+        className="fixed inset-0 z-30 hidden bg-black/50 md:hidden"
+        onClick={toggleSidebar}
+      />
+    </>
   );
 }

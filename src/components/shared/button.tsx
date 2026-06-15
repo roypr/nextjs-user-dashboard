@@ -1,6 +1,6 @@
 /**
  * @fileoverview Reusable Button component with variant support (primary, secondary, danger).
- * Renders a styled <button> or <a> element based on props.
+ * Includes active scale transform for tactile feel and smooth transitions.
  */
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -14,11 +14,11 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<string, string> = {
   primary:
-    "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-400",
+    "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] active:scale-[0.97] disabled:opacity-50",
   secondary:
-    "bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400 disabled:bg-gray-100",
+    "bg-[var(--bg-card)] text-[var(--text-primary)] border border-[var(--border)] hover:bg-[var(--bg-subtle)] active:scale-[0.97] disabled:opacity-50",
   danger:
-    "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-400",
+    "bg-[var(--error)] text-white hover:bg-[#b91c1c] active:scale-[0.97] disabled:opacity-50",
 };
 
 /**
@@ -41,13 +41,13 @@ export default function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center rounded px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed ${variantStyles[variant]} ${fullWidth ? "w-full" : ""} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 disabled:cursor-not-allowed ${variantStyles[variant]} ${fullWidth ? "w-full" : ""} ${className}`}
       disabled={disabled || loading}
       {...rest}
     >
       {loading && (
         <svg
-          className="mr-2 h-4 w-4 animate-spin"
+          className="h-4 w-4 animate-spin"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"

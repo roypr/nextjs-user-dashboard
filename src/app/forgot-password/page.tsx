@@ -1,7 +1,7 @@
 /**
  * @fileoverview Forgot password page.
- * Email input form that always shows a success message after submission
- * to prevent user enumeration.
+ * Email input form in a centered card that always shows a success message
+ * after submission to prevent user enumeration.
  */
 
 "use client";
@@ -23,20 +23,20 @@ export default function ForgotPasswordPage() {
   );
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-2 text-center text-2xl font-bold text-gray-900">
-          Reset Password
-        </h1>
-        <p className="mb-6 text-center text-sm text-gray-600">
-          Enter your email and we&apos;ll send you a reset link.
-        </p>
+    <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
+      <div className="card-lg w-full max-w-sm animate-slide-up p-8">
+        <div className="mb-8 text-center">
+          <h1 className="page-heading mb-1">Reset Password</h1>
+          <p className="text-sm text-[var(--text-secondary)]">
+            Enter your email and we&apos;ll send you a reset link.
+          </p>
+        </div>
 
-        {state?.success && <Alert type="success" message={state.success} />}
-        {state?.error && <Alert type="error" message={state.error} />}
+        {state?.success && <div className="mb-4"><Alert type="success" message={state.success} /></div>}
+        {state?.error && <div className="mb-4"><Alert type="error" message={state.error} /></div>}
 
         {!state?.success && (
-          <form action={formAction} className="space-y-4">
+          <form action={formAction} className="space-y-5">
             <Input
               label="Email"
               name="email"
@@ -50,8 +50,8 @@ export default function ForgotPasswordPage() {
           </form>
         )}
 
-        <p className="mt-4 text-center text-sm text-gray-600">
-          <Link href="/login" className="text-blue-600 hover:text-blue-500">
+        <p className="mt-6 text-center text-sm text-[var(--text-secondary)]">
+          <Link href="/login" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
             Back to sign in
           </Link>
         </p>

@@ -51,7 +51,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full">
+      <body className="min-h-full bg-[var(--bg-page)] text-[var(--text-primary)]">
         <Toast />
         <FrontendLayout>{children}</FrontendLayout>
       </body>

@@ -1,6 +1,6 @@
 /**
  * @fileoverview Frontend layout wrapper combining Header, main content area, and Footer.
- * Used by the root layout to wrap all public-facing pages.
+ * Wraps all public-facing pages with consistent warm background.
  */
 
 import Header from "@/components/frontend/header";
@@ -16,7 +16,7 @@ interface FrontendLayoutProps {
  */
 export default function FrontendLayout({ children }: FrontendLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[var(--bg-page)]">
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />

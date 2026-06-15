@@ -1,7 +1,7 @@
 /**
  * @fileoverview Toast notification component that reads flash messages from
  * a cookie and displays them with auto-dismiss after 5 seconds.
- * Renders a styled notification bar at the top of the page.
+ * Renders a styled notification bar at the top of the page with slide-in animation.
  */
 
 "use client";
@@ -62,7 +62,6 @@ export default function Toast() {
   const dismiss = useCallback(() => {
     setVisible(false);
     clearFlashCookie();
-    // Clear after animation
     setTimeout(() => setFlash(null), 300);
   }, []);
 
@@ -73,7 +72,6 @@ export default function Toast() {
       setVisible(true);
       clearFlashCookie();
 
-      // Auto-dismiss after 5 seconds
       const timer = setTimeout(dismiss, 5000);
       return () => clearTimeout(timer);
     }
@@ -81,37 +79,32 @@ export default function Toast() {
 
   if (!flash) return null;
 
-  const bgColorMap = {
-    success: "bg-green-600",
-    error: "bg-red-600",
-    info: "bg-blue-600",
+  const styles: Record<string, string> = {
+    success: "bg-[var(--success)]",
+    error: "bg-[var(--error)]",
+    info: "bg-[var(--accent)]",
   };
 
-  const bgColor = bgColorMap[flash.type];
+  const bgColor = styles[flash.type] ?? styles.info;
 
   return (
     <div
-      className={`pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center transition-opacity duration-300 ${
-        visible ? "opacity-100" : "opacity-0"
+      className={`pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center transition-all duration-300 ${
+        visible ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0"
       }`}
     >
       <div
-        className={`pointer-events-auto mx-4 mt-4 flex items-center gap-3 rounded-lg px-6 py-3 text-sm font-medium text-white shadow-lg ${bgColor}`}
+        className={`pointer-events-auto mx-4 mt-4 flex items-center gap-3 rounded-xl px-5 py-3 text-sm font-medium text-white shadow-lg ${bgColor}`}
         role="alert"
       >
         <span className="flex-1">{flash.message}</span>
         <button
           onClick={dismiss}
-          className="shrink-0 text-white/80 hover:text-white focus:outline-none"
-          aria-label="Dismiss notification"
+          className="shrink-0 rounded-md p-1 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+          aria-label="Dismiss"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>

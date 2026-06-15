@@ -3,7 +3,7 @@
  * Reads session via getSession() and settings via getCachedSettings(),
  * then renders the appropriate header menu based on auth state.
  * Collapses to hamburger menu on mobile viewports.
- * Falls back to static links if settings are unavailable.
+ * Sleeker warm-professional design with subtle glass-like border.
  */
 
 import Link from "next/link";
@@ -14,7 +14,7 @@ import HeaderMobileNav from "./header-mobile-nav";
 /**
  * Frontend header with dynamic navigation based on authentication state.
  * Shows different menu items for logged-in vs logged-out users.
- * Responsive: shows hamburger menu on mobile (< 768px).
+ * Responsive: shows hamburger menu on mobile.
  */
 export default async function Header() {
   const [session, settings] = await Promise.all([
@@ -34,19 +34,19 @@ export default async function Header() {
       ];
 
   return (
-    <header className="border-b border-gray-200 bg-white">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="text-xl font-bold text-gray-900">
+    <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--bg-card)]/90 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
+        <Link href="/" className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
           {siteName}
         </Link>
 
         {/* Desktop navigation — hidden on mobile */}
-        <nav className="hidden items-center space-x-4 md:flex">
+        <nav className="hidden items-center gap-1 md:flex">
           {menuItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900"
+              className="rounded-lg px-3.5 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
             >
               {item.label}
             </Link>
@@ -54,7 +54,7 @@ export default async function Header() {
           {isLoggedIn && (
             <Link
               href="/logout"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900"
+              className="rounded-lg px-3.5 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
             >
               Logout
             </Link>
