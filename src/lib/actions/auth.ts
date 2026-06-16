@@ -96,7 +96,7 @@ export async function signup(
         },
       });
 
-      const token = await createVerificationToken(newUser.id);
+      const token = await createVerificationToken(newUser.id, undefined, tx as any);
       await sendVerificationEmail(
         email,
         token.token,

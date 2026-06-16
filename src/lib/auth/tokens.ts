@@ -28,13 +28,14 @@ export function generateToken(): string {
 export async function createVerificationToken(
   userId: string,
   newEmail?: string,
+  db = prisma,
 ) {
   const token = generateToken();
   const expiresAt = new Date(
     Date.now() + VERIFICATION_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000,
   );
 
-  return prisma.emailVerificationToken.create({
+  return db.emailVerificationToken.create({
     data: {
       token,
       userId,
