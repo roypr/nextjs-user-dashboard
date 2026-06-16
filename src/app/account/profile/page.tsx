@@ -1,91 +1,44 @@
 /**
- * @fileoverview User profile page — view and edit name, phone, address.
- * Email is displayed as read-only. Uses useActionState with the updateProfile action.
- * Styled with warm-professional card design.
+ * @fileoverview User profile page — server component that fetches current user data
+ * and passes it to the client-side profile form for editing.
  */
 
-"use client";
-
-import { useActionState } from "react";
-import { useRouter } from "next/navigation";
-import { updateProfile } from "@/lib/actions/user";
-import Button from "@/components/shared/button";
-import Input from "@/components/shared/input";
-import Alert from "@/components/shared/alert";
-
-interface ProfilePageProps {
-  initialName?: string;
-  initialEmail?: string;
-  initialPhone?: string;
-  initialAddress?: string;
-}
+import { redirect } from "next/navigation";
+import prisma from "@/lib/prisma";
+import { getSession } from "@/lib/auth/session";
+import { authorize } from "@/lib/auth/authorize";
+import ProfileForm from "./profile-form";
 
 /**
- * Profile page with edit form for name, phone, and address.
+ * Server component that fetches user profile data and renders the edit form.
  */
-export default function ProfilePage({
-  initialName = "",
-  initialEmail = "",
-  initialPhone = "",
-  initialAddress = "",
-}: ProfilePageProps) {
-  const [state, formAction, pending] = useActionState(updateProfile, undefined);
-  const router = useRouter();
+export default async function ProfilePage() {
+  const session = await getSession();
+
+  if (!authorize(session, { type: "any" })) {
+    redirect("/login");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session!.userId },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      address: true,
+    },
+  });
+
+  if (!user) {
+    redirect("/login");
+  }
 
   return (
-    <div className="animate-slide-up">
-      <h1 className="page-heading mb-8">My Profile</h1>
-
-      {state?.success && <div className="mb-4"><Alert type="success" message={state.success} /></div>}
-      {state?.error && <div className="mb-4"><Alert type="error" message={state.error} /></div>}
-
-      <div className="card-lg p-6">
-        <form action={formAction} className="space-y-5">
-          <Input
-            label="Name"
-            name="name"
-            type="text"
-            defaultValue={initialName}
-            placeholder="Your name"
-          />
-
-          <Input
-            label="Email"
-            name="email"
-            type="email"
-            defaultValue={initialEmail}
-            disabled
-          />
-
-          <Input
-            label="Phone"
-            name="phone"
-            type="tel"
-            defaultValue={initialPhone}
-            placeholder="Your phone number"
-          />
-
-          <div className="mb-4">
-            <label htmlFor="address" className="label-base">
-              Address
-            </label>
-            <textarea
-              id="address"
-              name="address"
-              defaultValue={initialAddress}
-              placeholder="Your address"
-              rows={3}
-              className="input-base"
-            />
-          </div>
-
-          <div className="border-t border-[var(--border-light)] pt-6">
-            <Button type="submit" loading={pending}>
-              Save Changes
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <ProfileForm
+      initialName={user.name ?? ""}
+      initialEmail={user.email}
+      initialPhone={user.phone ?? ""}
+      initialAddress={user.address ?? ""}
+    />
   );
 }
