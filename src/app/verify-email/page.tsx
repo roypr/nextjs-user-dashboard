@@ -6,7 +6,7 @@
 
 "use client";
 
-import { Suspense, useActionState, useEffect } from "react";
+import { Suspense, useActionState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { verifyEmail } from "@/lib/actions/auth";
@@ -20,14 +20,15 @@ import LoadingSpinner from "@/components/shared/loading-spinner";
 function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [state, formAction, pending] = useActionState(verifyEmail, undefined);
 
+  // Auto-submit via proper form submission infrastructure instead of
+  // calling formAction directly (which would trigger a React warning).
   useEffect(() => {
-    if (token && !state) {
-      const formData = new FormData();
-      formData.set("token", token);
-      formAction(formData);
+    if (token && !state && formRef.current) {
+      formRef.current.requestSubmit();
     }
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -35,6 +36,10 @@ function VerifyEmailForm() {
     <div className="flex min-h-[70vh] items-center justify-center px-4">
       <div className="card-lg w-full max-w-sm animate-slide-up p-8 text-center">
         <h1 className="page-heading mb-6">Email Verification</h1>
+
+        <form ref={formRef} action={formAction} aria-hidden="true" className="hidden">
+          <input type="hidden" name="token" value={token} />
+        </form>
 
         {pending && <LoadingSpinner size="lg" className="py-8" />}
 
