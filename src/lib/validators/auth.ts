@@ -6,18 +6,26 @@
 import { z } from "zod";
 
 /**
+ * Password strength refinement: requires uppercase, lowercase, number, and special character.
+ */
+const passwordStrength = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .refine((val) => /[A-Z]/.test(val), "Password must contain at least one uppercase letter")
+  .refine((val) => /[a-z]/.test(val), "Password must contain at least one lowercase letter")
+  .refine((val) => /[0-9]/.test(val), "Password must contain at least one number")
+  .refine((val) => /[^A-Za-z0-9]/.test(val), "Password must contain at least one special character");
+
+/**
  * Signup form validation schema.
- * Requires email (valid format) and password (minimum 8 characters).
+ * Requires email (valid format) and strong password.
  */
 export const signupSchema = z.object({
   email: z
     .string()
     .email("Please enter a valid email address")
     .describe("User's email address for login and verification"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .describe("User's password (minimum 8 characters)"),
+  password: passwordStrength.describe("User's password (minimum 8 characters, must include uppercase, lowercase, number, and special character)"),
 });
 
 /**
@@ -53,7 +61,7 @@ export const forgotPasswordSchema = z.object({
 
 /**
  * Reset password form validation schema.
- * Requires token (from URL), new password (min 8 chars), and confirmation.
+ * Requires token (from URL), strong new password, and confirmation.
  */
 export const resetPasswordSchema = z
   .object({
@@ -61,10 +69,7 @@ export const resetPasswordSchema = z
       .string()
       .min(1, "Reset token is required")
       .describe("Password reset token from the email link"),
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .describe("New password (minimum 8 characters)"),
+    password: passwordStrength.describe("New password (minimum 8 characters, must include uppercase, lowercase, number, and special character)"),
     confirmPassword: z
       .string()
       .min(1, "Please confirm your password")

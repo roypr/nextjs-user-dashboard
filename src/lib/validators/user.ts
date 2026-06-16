@@ -6,6 +6,17 @@
 import { z } from "zod";
 
 /**
+ * Password strength refinement: requires uppercase, lowercase, number, and special character.
+ */
+const passwordStrength = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .refine((val) => /[A-Z]/.test(val), "Password must contain at least one uppercase letter")
+  .refine((val) => /[a-z]/.test(val), "Password must contain at least one lowercase letter")
+  .refine((val) => /[0-9]/.test(val), "Password must contain at least one number")
+  .refine((val) => /[^A-Za-z0-9]/.test(val), "Password must contain at least one special character");
+
+/**
  * Profile update validation schema.
  * Name, phone, and address are all optional and trimmed.
  */
@@ -32,7 +43,7 @@ export const updateProfileSchema = z.object({
 
 /**
  * Change password validation schema.
- * Requires current password, new password (min 8 chars), and confirmation.
+ * Requires current password, strong new password, and confirmation.
  */
 export const changePasswordSchema = z
   .object({
@@ -40,10 +51,7 @@ export const changePasswordSchema = z
       .string()
       .min(1, "Current password is required")
       .describe("User's current password for verification"),
-    newPassword: z
-      .string()
-      .min(8, "New password must be at least 8 characters")
-      .describe("New password (minimum 8 characters)"),
+    newPassword: passwordStrength.describe("New password (minimum 8 characters, must include uppercase, lowercase, number, and special character)"),
     confirmPassword: z
       .string()
       .min(1, "Please confirm your new password")
