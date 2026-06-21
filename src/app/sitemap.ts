@@ -1,44 +1,41 @@
 /**
  * @fileoverview Dynamic sitemap generation for SEO.
- * Includes the home page, all published CMS pages, and static auth routes.
+ * Includes the home page, all published CMS pages ([slug]), and
+ * an extendable list of extra public routes (contact, etc.).
+ * Auth, admin, and account routes are intentionally excluded.
  * Uses NEXT_PUBLIC_SITE_URL for the base URL.
  */
 
 import type { MetadataRoute } from "next";
 import prisma from "@/lib/prisma";
 
+// ── Extendable list of extra public routes ──────────────────────────────────
+// Add any future public-facing routes here (e.g., /contact, /about, /faq).
+const EXTRA_ROUTES: { path: string; priority?: number }[] = [];
+
 /**
- * Generates the sitemap XML with all public routes.
- * Includes the home page, all published CMS pages from the database,
- * and static auth routes (login, signup).
+ * Generates the sitemap XML.
+ *
+ * Priority order:
+ *  1. Home page
+ *  2. CMS pages ([slug]) from the database
+ *  3. Extra public routes (e.g., /contact)
+ *
  * @returns Sitemap entries array.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const now = new Date();
 
-  // Static routes
-  const staticRoutes = [
-    {
-      url: siteUrl,
-      lastModified: new Date(),
-      changeFrequency: "daily" as const,
-      priority: 1.0,
-    },
-    {
-      url: `${siteUrl}/login`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.3,
-    },
-    {
-      url: `${siteUrl}/signup`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.3,
-    },
-  ];
+  // 1. Home page — highest priority
+  const homeEntry: MetadataRoute.Sitemap[number] = {
+    url: siteUrl,
+    lastModified: now,
+    changeFrequency: "daily",
+    priority: 1.0,
+  };
 
-  // Dynamic CMS pages
+  // 2. Dynamic CMS pages from the database
   let pages: { slug: string; updatedAt: Date }[] = [];
   try {
     pages = await prisma.page.findMany({
@@ -46,15 +43,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       orderBy: { updatedAt: "desc" },
     });
   } catch {
-    // If DB is unreachable, return only static routes
+    // DB unreachable → continue with home + extra routes only
   }
 
-  const pageRoutes = pages.map((page) => ({
+  const pageEntries: MetadataRoute.Sitemap = pages.map((page) => ({
     url: `${siteUrl}/${page.slug}`,
     lastModified: page.updatedAt,
-    changeFrequency: "weekly" as const,
+    changeFrequency: "weekly",
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...pageRoutes];
+  // 3. Extra public routes (contact, etc.)
+  const extraEntries: MetadataRoute.Sitemap = EXTRA_ROUTES.map(({ path, priority }) => ({
+    url: `${siteUrl}${path}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: priority ?? 0.5,
+  }));
+
+  return [homeEntry, ...pageEntries, ...extraEntries];
 }
