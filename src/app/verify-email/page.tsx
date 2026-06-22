@@ -1,7 +1,8 @@
 /**
  * @fileoverview Email verification page.
- * Reads the token from searchParams and calls verifyEmail on mount.
+ * Reads the token and optional redirect from searchParams and calls verifyEmail on mount.
  * Shows success or error message in a centered card.
+ * On success, redirects to login (with redirect param preserved) server-side.
  */
 
 "use client";
@@ -14,12 +15,13 @@ import Alert from "@/components/shared/alert";
 import LoadingSpinner from "@/components/shared/loading-spinner";
 
 /**
- * Inner form component that reads token from URL search params.
+ * Inner form component that reads token and redirect from URL search params.
  * Must be wrapped in a Suspense boundary per Next.js requirements.
  */
 function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  const redirectTo = searchParams.get("redirect") ?? "";
   const formRef = useRef<HTMLFormElement>(null);
 
   const [state, formAction, pending] = useActionState(verifyEmail, undefined);
@@ -39,6 +41,7 @@ function VerifyEmailForm() {
 
         <form ref={formRef} action={formAction} aria-hidden="true" className="hidden">
           <input type="hidden" name="token" value={token} />
+          {redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
         </form>
 
         {pending && <LoadingSpinner size="lg" className="py-8" />}
@@ -47,23 +50,11 @@ function VerifyEmailForm() {
           <Alert type="error" message="Missing verification token." />
         )}
 
-        {state?.success && (
-          <div className="space-y-4">
-            <Alert type="success" message={state.success} />
-            <Link
-              href="/login"
-              className="inline-block text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]"
-            >
-              Sign in to your account →
-            </Link>
-          </div>
-        )}
-
         {state?.error && (
           <div className="space-y-4">
             <Alert type="error" message={state.error} />
             <Link
-              href="/resend-verification"
+              href={redirectTo ? `/resend-verification?redirect=${encodeURIComponent(redirectTo)}` : "/resend-verification"}
               className="inline-block text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]"
             >
               Resend verification email →
@@ -80,11 +71,7 @@ function VerifyEmailForm() {
  */
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-[70vh] items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    }>
+    <Suspense>
       <VerifyEmailForm />
     </Suspense>
   );

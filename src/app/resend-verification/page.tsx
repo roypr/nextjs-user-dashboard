@@ -2,11 +2,14 @@
  * @fileoverview Resend verification email page.
  * Email input form in a centered card that always shows success after submission
  * to prevent user enumeration.
+ * Supports a ?redirect= search param to persist through the verification email flow.
  */
 
 "use client";
 
+import { Suspense } from "react";
 import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { resendVerification } from "@/lib/actions/auth";
 import Button from "@/components/shared/button";
@@ -14,9 +17,12 @@ import Input from "@/components/shared/input";
 import Alert from "@/components/shared/alert";
 
 /**
- * Resend verification form — always shows success after submit.
+ * Inner resend form that reads redirect from URL search params.
  */
-export default function ResendVerificationPage() {
+function ResendVerificationForm() {
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") ?? "";
+
   const [state, formAction, pending] = useActionState(
     resendVerification,
     undefined,
@@ -37,6 +43,7 @@ export default function ResendVerificationPage() {
 
         {!state?.success && (
           <form action={formAction} className="space-y-5">
+            {redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
             <Input
               label="Email"
               name="email"
@@ -51,11 +58,25 @@ export default function ResendVerificationPage() {
         )}
 
         <p className="mt-6 text-center text-sm text-[var(--text-secondary)]">
-          <Link href="/login" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
+          <Link
+            href={redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login"}
+            className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]"
+          >
             Back to sign in
           </Link>
         </p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Resend verification page with Suspense boundary for searchParams access.
+ */
+export default function ResendVerificationPage() {
+  return (
+    <Suspense>
+      <ResendVerificationForm />
+    </Suspense>
   );
 }

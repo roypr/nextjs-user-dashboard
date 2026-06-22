@@ -2,11 +2,14 @@
  * @fileoverview Frontend login page.
  * Displays a login form in a centered card using useActionState.
  * If already logged in, shows a message instead of the form.
+ * Supports a ?redirect= search param for post-login redirection.
  */
 
 "use client";
 
+import { Suspense } from "react";
 import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { login } from "@/lib/actions/auth";
 import Button from "@/components/shared/button";
@@ -14,9 +17,12 @@ import Input from "@/components/shared/input";
 import Alert from "@/components/shared/alert";
 
 /**
- * Login page with email and password form in a card container.
+ * Inner login form that reads redirect from URL search params.
  */
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") ?? "";
+
   const [state, formAction, pending] = useActionState(login, undefined);
 
   return (
@@ -33,6 +39,7 @@ export default function LoginPage() {
         {state?.error && <div className="mb-4"><Alert type="error" message={state.error} /></div>}
 
         <form action={formAction} className="space-y-5">
+          {redirectTo && <input type="hidden" name="redirect" value={redirectTo} />}
           <Input
             label="Email"
             name="email"
@@ -53,7 +60,10 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center text-sm text-[var(--text-secondary)]">
-          <Link href="/signup" className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]">
+          <Link
+            href={redirectTo ? `/signup?redirect=${encodeURIComponent(redirectTo)}` : "/signup"}
+            className="font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]"
+          >
             Create an account
           </Link>
           <span className="mx-2 text-[var(--text-muted)]">·</span>
@@ -63,5 +73,16 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Login page with Suspense boundary for searchParams access.
+ */
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

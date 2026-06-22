@@ -78,6 +78,10 @@ export async function signup(
 
     const { email, password } = parsed.data;
 
+    // Extract redirect URL (internal only, validated server-side)
+    const rawRedirect = formData.get("redirect") as string | null;
+    const redirect = rawRedirect?.startsWith("/") ? rawRedirect : null;
+
     // Check for existing user
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -101,6 +105,7 @@ export async function signup(
         email,
         token.token,
         process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+        redirect ?? undefined,
       );
 
       return newUser;
@@ -144,6 +149,10 @@ export async function login(
     }
 
     const { email, password, isAdmin } = parsed.data;
+
+    // Extract redirect URL (internal only, validated server-side)
+    const rawRedirect = formData.get("redirect") as string | null;
+    const redirectUrl = rawRedirect?.startsWith("/") ? rawRedirect : null;
 
     // Find user
     const user = await prisma.user.findUnique({
@@ -190,9 +199,11 @@ export async function login(
         : 0,
     });
 
-    // Redirect
+    // Redirect: use redirect param for non-admin logins, fall back to defaults
     if (isAdmin) {
       redirect("/admin/dashboard");
+    } else if (redirectUrl) {
+      redirect(redirectUrl);
     } else {
       redirect("/account/dashboard");
     }
@@ -241,6 +252,10 @@ export async function verifyEmail(
       return { error: "Verification token is missing." };
     }
 
+    // Extract redirect URL (internal only, validated server-side)
+    const rawRedirect = formData.get("redirect") as string | null;
+    const redirectUrl = rawRedirect?.startsWith("/") ? rawRedirect : null;
+
     // Rate limit
     const ip = await getClientIP();
     const { success: withinLimit } = await verifyEmailLimiter.limit(ip);
@@ -284,8 +299,24 @@ export async function verifyEmail(
       return { error: "This verification link has already been used." };
     }
 
+    // Redirect to login after successful verification, preserving redirect param
+    if (redirectUrl) {
+      redirect(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
+    } else {
+      redirect("/login");
+    }
+
+    // Note: redirect throws, so the return below is unreachable but needed for type safety
     return { success: "Email verified successfully! You can now log in." };
   } catch (error) {
+    // If redirect was thrown, re-throw it
+    if (
+      isRedirectError(error) ||
+      (error instanceof Error && error.message.toLowerCase().includes("redirect"))
+    ) {
+      throw error;
+    }
+
     console.error("Verify email error:", error);
     return { error: "An unexpected error occurred. Please try again." };
   }
@@ -440,6 +471,10 @@ export async function resendVerification(
 
     const { email } = parsed.data;
 
+    // Extract redirect URL (internal only, validated server-side)
+    const rawRedirect = formData.get("redirect") as string | null;
+    const redirect = rawRedirect?.startsWith("/") ? rawRedirect : null;
+
     // Find user (silently succeed if not found)
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
@@ -467,6 +502,7 @@ export async function resendVerification(
       email,
       token.token,
       process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+      redirect ?? undefined,
     );
 
     return {

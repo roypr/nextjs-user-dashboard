@@ -46,12 +46,14 @@ function getFromAddress(): string {
  * @param email - The recipient's email address.
  * @param token - The verification token.
  * @param siteUrl - The base URL of the site (for constructing the verification link).
+ * @param redirect - Optional redirect URL to include in the verification link.
  * @throws {Error} If sending fails, throws a user-friendly error after logging.
  */
 export async function sendVerificationEmail(
   email: string,
   token: string,
   siteUrl: string,
+  redirect?: string,
 ): Promise<void> {
   let transporter;
   try {
@@ -61,7 +63,10 @@ export async function sendVerificationEmail(
     throw new Error("Unable to send verification email. Please try again later.");
   }
 
-  const verificationUrl = `${siteUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  let verificationUrl = `${siteUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  if (redirect) {
+    verificationUrl += `&redirect=${encodeURIComponent(redirect)}`;
+  }
 
   try {
     await transporter.sendMail({
